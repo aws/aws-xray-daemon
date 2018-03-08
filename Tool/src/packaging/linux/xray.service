@@ -1,0 +1,16 @@
+# Location: /etc/systemd/system/xray.service
+# systemctl enable xray
+# systemctl start xray
+# systemctl | grep xray
+# https://www.freedesktop.org/software/systemd/man/systemd.unit.html
+
+[Unit]
+Description=xray
+
+[Service]
+WorkingDirectory=/usr/bin/
+ExecStart=/bin/su -s /bin/bash -c "xray -f /var/log/xray/xray.log"
+KillMode=process
+
+[Install]
+WantedBy=network-online.target

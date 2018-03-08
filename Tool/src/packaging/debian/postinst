@@ -1,0 +1,10 @@
+echo "Starting xray daemon"
+initSystem=$(cat /proc/1/comm)
+if [ $initSystem = init ]
+then
+    start xray || true
+elif [ $initSystem = systemd ]
+then
+    systemctl start xray
+    systemctl daemon-reload
+fi

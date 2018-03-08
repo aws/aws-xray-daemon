@@ -1,0 +1,69 @@
+hash: 843bf4eb162ad5ee1e8111753a5bb5d157a1c93adfbf207838c13eaddd86413e
+updated: 2017-03-08T16:33:42.338096339-08:00
+imports:
+- name: github.com/aws/aws-sdk-go
+  version: fa1a4bc634fffa6ac468d8fb217e05475e063440
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/credentials/stscreds
+  - aws/ec2metadata
+  - aws/request
+  - aws/session
+  - service/sts
+  - service/xray
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/signer/v4
+  - private/protocol/restjson
+  - aws/credentials
+  - aws/endpoints
+  - aws/corehandlers
+  - aws/defaults
+  - private/protocol/query
+  - private/protocol/rest
+  - private/protocol/jsonrpc
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - private/protocol/query/queryutil
+  - private/protocol/xml/xmlutil
+  - private/protocol/json/jsonutil
+  - private/protocol
+- name: github.com/cihub/seelog
+  version: f561c5e57575bb1e0a2167028b7339b3a8d16fb4
+  subpackages:
+  - archive
+  - archive/gzip
+  - archive/tar
+  - archive/zip
+- name: github.com/go-ini/ini
+  version: c437d20015c2ab6454b7a66a13109ff0fb99e17a
+- name: github.com/golang/sys
+  version: 99f16d856c9836c42d24e7ab64ea72916925fa97
+  subpackages:
+  - windows
+- name: github.com/jmespath/go-jmespath
+  version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+- name: github.com/shirou/gopsutil
+  version: 23f4b7eb149c4b07835a23057d6d168d9301d373
+  subpackages:
+  - mem
+  - internal/common
+- name: github.com/stretchr/testify
+  version: 4d4bfba8f1d1027c4fdbe371823030df51419987
+- name: golang.org/x/net
+  version: a6577fac2d73be281a500b310739095313165611
+  subpackages:
+  - http2
+  - http2/hpack
+  - idna
+  - lex/httplex
+- name: golang.org/x/sys
+  version: 99f16d856c9836c42d24e7ab64ea72916925fa97
+  subpackages:
+  - windows/svc
+  - windows
+- name: gopkg.in/yaml.v2
+  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+devImports: []

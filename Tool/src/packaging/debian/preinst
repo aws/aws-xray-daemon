@@ -1,0 +1,13 @@
+echo "Preparing for install"
+initSystem=$(cat /proc/1/comm)
+useradd --system -s /bin/false xray
+mkdir -m 755 /var/log/xray/
+chown xray /var/log/xray/
+if [ $initSystem = init ]
+then
+    stop xray || true
+elif [ $initSystem = systemd ]
+then
+    systemctl stop xray
+    systemctl daemon-reload
+fi

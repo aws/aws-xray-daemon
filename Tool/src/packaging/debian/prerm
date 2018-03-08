@@ -1,0 +1,10 @@
+echo "Stopping xray daemon"
+initSystem=$(cat /proc/1/comm)
+if [ $initSystem = init ]
+then
+    stop xray || true
+elif [ $initSystem = systemd ]
+then
+    systemctl stop xray
+    systemctl daemon-reload
+fi

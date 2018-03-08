@@ -1,0 +1,3 @@
+/etc/init/xray.conf
+/etc/amazon/xray/cfg.yaml
+/lib/systemd/system/xray.service

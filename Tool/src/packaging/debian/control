@@ -1,0 +1,9 @@
+Section: admin
+Depends: libc6
+Priority: optional
+Copyright: Apache License, Version 2.0
+Suggests: aws-xray-doc
+Maintainer: Amazon.com, Inc. <aws-xray@amazon.com>
+Description: Amazon X-Ray is a platform makes it easy for customers to analyze the behavior of distributed applications.
+ Please visit the AWS Developer Tools page for additional information.
+
