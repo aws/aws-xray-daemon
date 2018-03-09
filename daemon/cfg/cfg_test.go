@@ -196,7 +196,7 @@ LocalMode: false
 ProxyAddress: ""
 Version: 1`
 	setupTestFile(configString)
-	configLocations = append(configLocations, tstFilePath)
+	configLocations = append([]string{tstFilePath}, configLocations...)
 
 	c := LoadConfig("")
 
