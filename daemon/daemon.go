@@ -190,13 +190,19 @@ func initDaemon(config *cfg.Config) *Daemon {
 	// If calculated number of buffer is lower than our default, use calculated one. Otherwise, use default value.
 	parameterConfig.Processor.BatchSize = util.GetMinIntValue(parameterConfig.Processor.BatchSize, bufferLimit)
 
+	x := conn.NewXRay(awsConfig, session)
+	if x == nil {
+		log.Error("X-Ray client returned nil")
+		os.Exit(1)
+	}
+
 	daemon := &Daemon{
 		done:      make(chan bool),
 		std:       std,
 		pool:      bufferPool,
 		count:     0,
 		sock:      sock,
-		processor: processor.New(awsConfig, session, processorCount, std, bufferPool, parameterConfig),
+		processor: processor.New(x, processorCount, std, bufferPool, parameterConfig),
 	}
 
 	return daemon

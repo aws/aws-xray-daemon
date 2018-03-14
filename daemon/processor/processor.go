@@ -20,13 +20,9 @@ import (
 	"github.com/aws/aws-xray-daemon/daemon/tracesegment"
 
 	"math/rand"
-	"os"
 	"github.com/aws/aws-xray-daemon/daemon/cfg"
 	"github.com/aws/aws-xray-daemon/daemon/conn"
 	"github.com/aws/aws-xray-daemon/daemon/util/timer"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 // Processor buffers segments and send to X-Ray service.
@@ -63,7 +59,7 @@ type Processor struct {
 }
 
 // New creates new instance of Processor.
-func New(awsConfig *aws.Config, s *session.Session, segmentBatchProcessorCount int, std *ringbuffer.RingBuffer,
+func New(x conn.XRay, segmentBatchProcessorCount int, std *ringbuffer.RingBuffer,
 	pool *bufferpool.BufferPool, c *cfg.ParameterConfig) *Processor {
 	batchesChan := make(chan []*string, c.Processor.BatchProcessorQueueSize)
 	segmentBatchDoneChan := make(chan bool)
@@ -72,11 +68,6 @@ func New(awsConfig *aws.Config, s *session.Session, segmentBatchProcessorCount i
 		done:    segmentBatchDoneChan,
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
 		timer:   &timer.Client{},
-	}
-	x := conn.NewXRay(awsConfig, s)
-	if x == nil {
-		log.Error("X-Ray client returned nil")
-		os.Exit(1)
 	}
 	tsb.xRay = x
 	doneChan := make(chan bool)
