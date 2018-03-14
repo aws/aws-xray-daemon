@@ -30,8 +30,8 @@ type XRay interface {
 	PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error)
 }
 
-// XRayClient represents X-Ray client.
-type XRayClient struct {
+// xRayClient represents X-Ray client.
+type xRayClient struct {
 	xRay *xray.XRay
 }
 
@@ -41,12 +41,12 @@ func GetVersionNumber() string {
 }
 
 // PutTraceSegments makes PutTraceSegments api call on X-Ray client.
-func (c XRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error) {
+func (c xRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error) {
 	return c.xRay.PutTraceSegments(input)
 }
 
 // PutTelemetryRecords makes PutTelemetryRecords api call on X-Ray client.
-func (c XRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error) {
+func (c xRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error) {
 	return c.xRay.PutTelemetryRecords(input)
 }
 
@@ -75,7 +75,7 @@ func requestXray(awsConfig *aws.Config, s *session.Session) XRay {
 	}
 	x.Handlers.Build.PushBackNamed(XRayVersionUserAgentHandler)
 
-	xRay := XRayClient{
+	xRay := xRayClient{
 		xRay: x,
 	}
 	return xRay
