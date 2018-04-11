@@ -5,7 +5,7 @@
 # https://www.freedesktop.org/software/systemd/man/systemd.unit.html
 
 [Unit]
-Description=AWS XRay Daemon
+Description=AWS X-Ray Daemon
 
 [Service]
 Type=simple
