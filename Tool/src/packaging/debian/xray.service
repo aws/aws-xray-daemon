@@ -5,13 +5,19 @@
 # https://www.freedesktop.org/software/systemd/man/systemd.unit.html
 
 [Unit]
-Description=xray
+Description=AWS X-Ray Daemon
 
 [Service]
 Type=simple
 WorkingDirectory=/usr/bin/
-ExecStart=/bin/su -s /bin/bash -c "xray -f /var/log/xray/xray.log" xray
+User=xray
+Group=xray
+ExecStart=/usr/bin/xray -f /var/log/xray/xray.log
 Restart=always
+LogsDirectory=xray
+LogsDirectoryMode=0755
+ConfigurationDirectory=amazon/xray
+ConfigurationDirectoryMode=0700
 
 [Install]
 WantedBy=network-online.target
