@@ -1,4 +1,5 @@
 SDK_BASE_FOLDERS=$(shell ls -d daemon/ | grep -v vendor)
+DAEMON_ONLY_PKGS=$(shell go list ./... | grep -v "/vendor/")
 GO_VET_CMD=go tool vet --all -shadow
 PREFIX :=.
 
@@ -76,7 +77,7 @@ package-rpm:
 .PHONY: test
 test:
 	@echo "Testing daemon"
-	go test -cover ${PREFIX}/daemon/ ./...
+	go test -cover ${DAEMON_ONLY_PKGS}
 
 vet:
 	${GO_VET_CMD} ${SDK_BASE_FOLDERS}
