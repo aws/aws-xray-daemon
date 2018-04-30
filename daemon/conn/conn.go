@@ -91,8 +91,8 @@ func GetAWSConfigSession(c *cfg.Config, roleArn string, region string, noMetadat
 		awsRegion = region
 		log.Debugf("Fetch region %v from commandline argument", awsRegion)
 	} else if noMetadata != true {
-		s, _ = session.NewSession()
-		region, err := ec2metadata.New(s).Region()
+		es, _ := session.NewSession()
+		region, err := ec2metadata.New(es).Region()
 		log.Debugf("Fetch region %v from ec2 metadata", region)
 		if err != nil {
 			log.Errorf("Unable to retrieve the region from the EC2 instance %v\n", err)
