@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+
 	"github.com/aws/aws-xray-daemon/daemon/util/test"
 
 	"github.com/aws/aws-sdk-go/service/xray"

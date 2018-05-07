@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"time"
+
 	"github.com/aws/aws-xray-daemon/daemon/cfg"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,6 +26,18 @@ import (
 	log "github.com/cihub/seelog"
 	"golang.org/x/net/http2"
 )
+
+type connAttr interface {
+	newAWSSession(roleArn string) *session.Session
+	getEC2Region(s *session.Session) (string, error)
+}
+
+// Conn implements connAttr interface.
+type Conn struct{}
+
+func (c *Conn) getEC2Region(s *session.Session) (string, error) {
+	return ec2metadata.New(s).Region()
+}
 
 // getNewHTTPClient returns new HTTP client instance with provided configuration.
 func getNewHTTPClient(maxIdle int, requestTimeout int, noVerify bool, proxyAddress string) *http.Client {
@@ -78,11 +91,12 @@ func getProxyURL(finalProxyAddress string) *url.URL {
 }
 
 // GetAWSConfigSession returns AWS config and session instances.
-func GetAWSConfigSession(c *cfg.Config, roleArn string, region string, noMetadata bool) (*aws.Config, *session.Session) {
-	http := getNewHTTPClient(cfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, cfg.ParameterConfigValue.Processor.RequestTimeout, c.NoVerifySSL, c.ProxyAddress)
+func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region string, noMetadata bool) (*aws.Config, *session.Session) {
 	var s *session.Session
-	s = newAWSSession(s, roleArn)
+	var err error
 	var awsRegion string
+	http := getNewHTTPClient(cfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, cfg.ParameterConfigValue.Processor.RequestTimeout, c.NoVerifySSL, c.ProxyAddress)
+	s = cn.newAWSSession(roleArn)
 	regionEnv := os.Getenv("AWS_REGION")
 	if region == "" && regionEnv != "" {
 		awsRegion = regionEnv
@@ -90,14 +104,14 @@ func GetAWSConfigSession(c *cfg.Config, roleArn string, region string, noMetadat
 	} else if region != "" {
 		awsRegion = region
 		log.Debugf("Fetch region %v from commandline argument", awsRegion)
-	} else if noMetadata != true {
-		es, _ := session.NewSession()
-		region, err := ec2metadata.New(es).Region()
-		log.Debugf("Fetch region %v from ec2 metadata", region)
+	} else if !noMetadata {
+		es := getDefaultSession()
+		awsRegion, err = cn.getEC2Region(es)
 		if err != nil {
 			log.Errorf("Unable to retrieve the region from the EC2 instance %v\n", err)
+		} else {
+			log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
 		}
-		awsRegion = region
 	}
 	if awsRegion == "" {
 		log.Error("Cannot fetch region variable from config file, environment variables and ec2 metadata.")
@@ -113,15 +127,31 @@ func GetAWSConfigSession(c *cfg.Config, roleArn string, region string, noMetadat
 	return config, s
 }
 
-func newAWSSession(s *session.Session, roleArn string) *session.Session {
+func (c *Conn) newAWSSession(roleArn string) *session.Session {
+	var s *session.Session
+	var err error
 	if roleArn == "" {
-		s, _ = session.NewSession()
+		s = getDefaultSession()
 	} else {
-		t, _ := session.NewSession()
+		t := getDefaultSession()
 		sts := stscreds.NewCredentialsWithClient(sts.New(t), roleArn)
-		s, _ = session.NewSession(&aws.Config{
+		s, err = session.NewSession(&aws.Config{
 			Credentials: sts,
 		})
+
+		if err != nil {
+			log.Errorf("Error in creating session object : %v\n.", err)
+			os.Exit(1)
+		}
 	}
 	return s
+}
+
+func getDefaultSession() *session.Session {
+	result, serr := session.NewSession()
+	if serr != nil {
+		log.Errorf("Error in creating session object : %v\n.", serr)
+		os.Exit(1)
+	}
+	return result
 }

@@ -19,6 +19,7 @@ import (
 	"runtime/pprof"
 	"sync/atomic"
 	"time"
+
 	"github.com/aws/aws-xray-daemon/daemon/bufferpool"
 	"github.com/aws/aws-xray-daemon/daemon/cfg"
 	"github.com/aws/aws-xray-daemon/daemon/cli"
@@ -181,7 +182,7 @@ func initDaemon(config *cfg.Config) *Daemon {
 	if config.Endpoint != "" {
 		log.Debugf("Using Endpoint read from Config file: %s", config.Endpoint)
 	}
-	awsConfig, session := conn.GetAWSConfigSession(config, roleArn, regionFlag, noMetadata)
+	awsConfig, session := conn.GetAWSConfigSession(&conn.Conn{}, config, roleArn, regionFlag, noMetadata)
 	log.Infof("Using region: %v", aws.StringValue(awsConfig.Region))
 
 	log.Debugf("ARN of the AWS resource running the daemon: %v", resourceARN)
