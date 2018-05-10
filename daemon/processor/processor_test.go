@@ -11,14 +11,14 @@ package processor
 
 import (
 	"fmt"
-	"strings"
-	"testing"
-	"time"
 	"github.com/aws/aws-xray-daemon/daemon/bufferpool"
 	"github.com/aws/aws-xray-daemon/daemon/ringbuffer"
 	"github.com/aws/aws-xray-daemon/daemon/telemetry"
 	"github.com/aws/aws-xray-daemon/daemon/tracesegment"
 	"github.com/aws/aws-xray-daemon/daemon/util/test"
+	"strings"
+	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -87,7 +87,6 @@ func TestSendBatchSuccess(t *testing.T) {
 		// Asserting the buffer pool was returned
 		assert.EqualValues(t, processor.pool.CurrentBuffersLen(), testCase)
 	}
-	timer.Dispose()
 }
 
 func TestPollingFewSegmentsExit(t *testing.T) {
@@ -112,7 +111,7 @@ func TestPollingFewSegmentsExit(t *testing.T) {
 	go processor.poll()
 
 	// Increment for Send Batch to proceed
-	timer.IncrementDuration(time.Duration(10))
+	timer.Advance(time.Duration(10))
 	segment := tracesegment.GetTestTraceSegment()
 	stdChan.Send(&segment)
 	stdChan.Close()
@@ -122,8 +121,6 @@ func TestPollingFewSegmentsExit(t *testing.T) {
 	assert.EqualValues(t, processor.ProcessedCount(), 1)
 	assert.True(t, strings.Contains(writer.Logs[0], "segment batch size: 1"))
 	assert.True(t, strings.Contains(writer.Logs[1], "processor: done!"))
-
-	timer.Dispose()
 }
 
 func TestPollingFewSegmentsIdleTimeout(t *testing.T) {
@@ -156,7 +153,7 @@ func TestPollingFewSegmentsIdleTimeout(t *testing.T) {
 	// Sleep to see to it the chan is processed before timeout is triggered
 	time.Sleep(time.Millisecond)
 	// Trigger Ideal Timeout to trigger PutSegments
-	timer.IncrementDuration(processor.sendIdleTimeout)
+	timer.Advance(processor.sendIdleTimeout)
 	time.Sleep(time.Millisecond)
 	// Sleep so that time.After trigger batch send and not closing of the channel
 	stdChan.Close()
@@ -166,8 +163,6 @@ func TestPollingFewSegmentsIdleTimeout(t *testing.T) {
 	assert.True(t, strings.Contains(writer.Logs[0], "sending partial batch"))
 	assert.True(t, strings.Contains(writer.Logs[1], "segment batch size: 1"))
 	assert.True(t, strings.Contains(writer.Logs[2], "processor: done!"))
-
-	timer.Dispose()
 }
 
 func TestPollingBatchBufferFull(t *testing.T) {
@@ -211,8 +206,6 @@ func TestPollingBatchBufferFull(t *testing.T) {
 	assert.True(t, strings.Contains(writer.Logs[0], "sending complete batch"))
 	assert.True(t, strings.Contains(writer.Logs[1], fmt.Sprintf("segment batch size: %v", batchSize)))
 	assert.True(t, strings.Contains(writer.Logs[2], "processor: done!"))
-
-	timer.Dispose()
 }
 
 func TestPollingBufferPoolExhaustedForcingSent(t *testing.T) {
@@ -255,8 +248,6 @@ func TestPollingBufferPoolExhaustedForcingSent(t *testing.T) {
 	assert.True(t, strings.Contains(writer.Logs[0], "sending partial batch due to load on buffer pool"))
 	assert.True(t, strings.Contains(writer.Logs[1], fmt.Sprintf("segment batch size: %v", 1)))
 	assert.True(t, strings.Contains(writer.Logs[2], "processor: done!"))
-
-	timer.Dispose()
 }
 
 func TestPollingIdleTimerIsInitiatedAfterElapseWithNoSegments(t *testing.T) {
@@ -281,7 +272,7 @@ func TestPollingIdleTimerIsInitiatedAfterElapseWithNoSegments(t *testing.T) {
 	// Sleep for routine to be initiated
 	time.Sleep(time.Millisecond)
 	// Trigger Idle Timeout
-	timer.IncrementDuration(processor.sendIdleTimeout)
+	timer.Advance(processor.sendIdleTimeout)
 	// sleep so that routine exist after timeout is tiggered
 	time.Sleep(time.Millisecond)
 	stdChan.Close()
@@ -289,5 +280,4 @@ func TestPollingIdleTimerIsInitiatedAfterElapseWithNoSegments(t *testing.T) {
 
 	// Called twice once at poll start and then after the timeout was triggered
 	assert.EqualValues(t, timer.AfterCalledTimes(), 2)
-	timer.Dispose()
 }

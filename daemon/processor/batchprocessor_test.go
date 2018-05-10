@@ -17,9 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-xray-daemon/daemon/util/test"
-
 	"github.com/aws/aws-sdk-go/service/xray"
+	"github.com/aws/aws-xray-daemon/daemon/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -133,14 +132,14 @@ func TestPoolSendFailedOnceMoreThanMin(t *testing.T) {
 	go s.poll()
 	for i := 0; i < backoffMinAttempts; i++ {
 		s.send(batch)
-		timer.IncrementDuration(time.Second)
+		timer.Advance(time.Second)
 		time.Sleep(time.Millisecond)
 	}
 	s.send(batch)
 	close(s.batches)
 
 	time.Sleep(time.Millisecond)
-	timer.IncrementDuration(time.Second * time.Duration(backoff))
+	timer.Advance(time.Second * time.Duration(backoff))
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, backoffMinAttempts+1)
 	// Backed off only once after min failed attempts are exhausted
@@ -149,7 +148,6 @@ func TestPoolSendFailedOnceMoreThanMin(t *testing.T) {
 	<-s.done
 
 	assert.True(t, strings.Contains(log.Logs[len(log.Logs)-1], doneMsg))
-	timer.Dispose()
 }
 
 func TestPoolSendFailedTwiceMoreThanMin(t *testing.T) {
@@ -174,13 +172,13 @@ func TestPoolSendFailedTwiceMoreThanMin(t *testing.T) {
 	go s.poll()
 	for i := 0; i < backoffMinAttempts; i++ {
 		s.send(batch)
-		timer.IncrementDuration(time.Second)
+		timer.Advance(time.Second)
 		time.Sleep(time.Millisecond)
 	}
 	s.send(batch)
 
 	time.Sleep(time.Millisecond)
-	timer.IncrementDuration(time.Second * time.Duration(backoff))
+	timer.Advance(time.Second * time.Duration(backoff))
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, backoffMinAttempts+1)
 	assert.EqualValues(t, 1, timer.AfterCalledTimes())
@@ -190,7 +188,7 @@ func TestPoolSendFailedTwiceMoreThanMin(t *testing.T) {
 	s.send(batch)
 
 	time.Sleep(time.Millisecond)
-	timer.IncrementDuration(time.Second * time.Duration(backoff2))
+	timer.Advance(time.Second * time.Duration(backoff2))
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, backoffMinAttempts+2)
 	assert.EqualValues(t, 2, timer.AfterCalledTimes())
@@ -198,7 +196,6 @@ func TestPoolSendFailedTwiceMoreThanMin(t *testing.T) {
 	close(s.batches)
 	<-s.done
 	assert.True(t, strings.Contains(log.Logs[len(log.Logs)-1], doneMsg))
-	timer.Dispose()
 }
 
 func TestPoolSendFailedTwiceAndSucceedThird(t *testing.T) {
@@ -226,13 +223,13 @@ func TestPoolSendFailedTwiceAndSucceedThird(t *testing.T) {
 	go s.poll()
 	for i := 0; i < backoffMinAttempts; i++ {
 		s.send(batch)
-		timer.IncrementDuration(time.Second)
+		timer.Advance(time.Second)
 		time.Sleep(time.Millisecond)
 	}
 	s.send(batch)
 
 	time.Sleep(time.Millisecond)
-	timer.IncrementDuration(time.Second * time.Duration(backoff))
+	timer.Advance(time.Second * time.Duration(backoff))
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, backoffMinAttempts+1)
 	assert.EqualValues(t, 1, timer.AfterCalledTimes())
@@ -243,7 +240,7 @@ func TestPoolSendFailedTwiceAndSucceedThird(t *testing.T) {
 	s.send(batch)
 
 	time.Sleep(time.Millisecond)
-	timer.IncrementDuration(time.Second * time.Duration(backoff2))
+	timer.Advance(time.Second * time.Duration(backoff2))
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, backoffMinAttempts+2)
 	assert.EqualValues(t, 2, timer.AfterCalledTimes())
@@ -252,7 +249,7 @@ func TestPoolSendFailedTwiceAndSucceedThird(t *testing.T) {
 	s.send(batch)
 
 	time.Sleep(time.Millisecond)
-	timer.IncrementDuration(time.Second)
+	timer.Advance(time.Second)
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, backoffMinAttempts+3)
 	assert.EqualValues(t, 2, timer.AfterCalledTimes()) // no backoff logic triggered.
@@ -262,7 +259,6 @@ func TestPoolSendFailedTwiceAndSucceedThird(t *testing.T) {
 
 	assert.True(t, strings.Contains(log.Logs[len(log.Logs)-2], fmt.Sprintf("Successfully sent batch of %v", 1)))
 	assert.True(t, strings.Contains(log.Logs[len(log.Logs)-1], doneMsg))
-	timer.Dispose()
 }
 
 func TestPutTraceSegmentsParameters(t *testing.T) {
