@@ -22,7 +22,7 @@ import (
 )
 
 // Version number of the X-Ray daemon.
-var versionNumber = "2.1.1"
+var versionNumber = "2.1.2"
 
 // XRay defines X-Ray api call structure.
 type XRay interface {
