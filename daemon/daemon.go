@@ -63,6 +63,7 @@ var noMetadata bool
 var version bool
 var logLevel string
 var regionFlag string
+var proxyAddress string
 
 // Daemon reads trace segments from X-Ray daemon address and
 // send to X-Ray service.
@@ -116,6 +117,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 		defaultLocalMode                 = cnfg.LocalMode
 		defaultRegion                    = cnfg.Region
 		defaultResourceARN               = cnfg.ResourceARN
+		defaultProxyAddress              = cnfg.ProxyAddress
 	)
 	socketConnection = "UDP"
 	regionFlag = defaultRegion
@@ -128,6 +130,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 	flag.StringVarF(&configFilePath, "config", "c", "", "Load a configuration file from the specified path.")
 	flag.StringVarF(&logFile, "log-file", "f", defaultLogPath, "Output logs to the specified file path.")
 	flag.StringVarF(&logLevel, "log-level", "l", defaultLogLevel, "Log level, from most verbose to least: dev, debug, info, warn, error, prod (default).")
+	flag.StringVarF(&proxyAddress, "proxy-address", "p", defaultProxyAddress, "Proxy address through which to upload segments.")
 	flag.BoolVarF(&version, "version", "v", false, "Show AWS X-Ray daemon version.")
 	return flag, cnfg
 }
