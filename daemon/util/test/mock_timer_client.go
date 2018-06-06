@@ -1,107 +1,92 @@
 package test
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// MockTimerClient is a mock for timer client.
+type timer struct {
+	start    time.Time
+	duration time.Duration
+	repeat   bool
+	fired    bool
+	c        chan time.Time
+}
+
 type MockTimerClient struct {
-	afterCalled       int32
-	tickCalled        int32
-	currentTime       int64
-	killAll           bool
-	killRoutinesCount int32
-	doneChannel       []chan bool
-	update            []chan bool
+	sync.RWMutex
+
+	current time.Time
+	timers  []*timer
+
+	afterCalled uint64
+	tickCalled  uint64
 }
 
-// IncrementDuration increments mock timer by d duration.
-func (t *MockTimerClient) IncrementDuration(d time.Duration) {
-	atomic.AddInt64(&t.currentTime, int64(d))
-	for _, update := range t.update {
-		update <- true
+func (m *MockTimerClient) newTimer(d time.Duration, repeat bool) *timer {
+	m.RLock()
+	t := &timer{
+		start:    m.current,
+		duration: d,
+		repeat:   repeat,
+		fired:    false,
+		c:        make(chan time.Time, 1),
 	}
-	for _, done := range t.doneChannel {
-		<-done
-	}
+	m.RUnlock()
+
+	m.Lock()
+	defer m.Unlock()
+	m.timers = append(m.timers, t)
+
+	return t
 }
 
-// Dispose kills all mock timer clients.
-func (t *MockTimerClient) Dispose() {
-	t.killAll = true
-	for _, update := range t.update {
-		update <- true
-	}
-	for _, done := range t.doneChannel {
-		<-done
-	}
+func (m *MockTimerClient) After(d time.Duration) <-chan time.Time {
+	atomic.AddUint64(&m.afterCalled, 1)
+
+	return m.newTimer(d, false).c
 }
 
-// TickRoutine is a routine for Timer.Tick().
-func (t *MockTimerClient) TickRoutine(d int64, c chan time.Time, done chan bool, update <-chan bool, startOfTick int64) {
-	for {
-		<-update
-		if t.killAll {
-			break
-		}
-		currentDuration := atomic.LoadInt64(&t.currentTime)
-		divisor := (currentDuration - startOfTick) / d
-		if d > 0 && divisor >= 1 {
-			var i int64
-			for i = 0; i < divisor; i++ {
-				t := time.Now()
-				c <- t
+func (m *MockTimerClient) Tick(d time.Duration) <-chan time.Time {
+	atomic.AddUint64(&m.tickCalled, 1)
+
+	return m.newTimer(d, true).c
+}
+
+// simulate time passing and signal timers / tickers accordingly
+func (m *MockTimerClient) Advance(d time.Duration) {
+	m.Lock()
+	m.current = m.current.Add(d)
+	m.Unlock()
+
+	m.RLock()
+	defer m.RUnlock()
+
+	curr := m.current
+	for _, t := range m.timers {
+		if t.repeat {
+			// for Tickers, calculate how many ticks has passed and signal accordingly
+			for i := int64(0); i < int64(curr.Sub(t.start)/t.duration); i++ {
+				t.c <- t.start.Add(t.duration * time.Duration(i+1))
+				t.start = t.start.Add(t.duration)
 			}
-			startOfTick = startOfTick + divisor*d
-		}
-		done <- true
-	}
-	atomic.AddInt32(&t.killRoutinesCount, 1)
-	done <- true
-}
-
-// AfterRoutine is a routine for Timer.After().
-func (t *MockTimerClient) AfterRoutine(d int64, c chan time.Time, done chan bool, startOfAfter int64) {
-	for !t.killAll {
-		currentDuration := atomic.LoadInt64(&t.currentTime)
-		if d > 0 && (currentDuration-startOfAfter)/d >= 1 {
-			c <- time.Now()
-			break
+		} else {
+			// for Afters (one-off), signal once
+			if !t.fired && (curr.Sub(t.start) >= t.duration) {
+				t.c <- t.start.Add(t.duration)
+				t.fired = true
+			}
 		}
 	}
-	atomic.AddInt32(&t.killRoutinesCount, 1)
-}
-
-// Tick mocks Timer.Tick().
-func (t *MockTimerClient) Tick(d time.Duration) <-chan time.Time {
-	// We use done and update channels on tick because it is long going process and infinite loop will
-	// consume lot of CPU
-	c := make(chan time.Time, 10)
-	done := make(chan bool, 1)
-	update := make(chan bool, 1)
-	go t.TickRoutine(int64(d), c, done, update, atomic.LoadInt64(&t.currentTime))
-	t.doneChannel = append(t.doneChannel, done)
-	t.update = append(t.update, update)
-	atomic.AddInt32(&t.tickCalled, 1)
-	return c
-}
-
-// After mocks Timer.After().
-func (t *MockTimerClient) After(d time.Duration) <-chan time.Time {
-	c := make(chan time.Time, 10)
-	done := make(chan bool, 1)
-	go t.AfterRoutine(int64(d), c, done, atomic.LoadInt64(&t.currentTime))
-	atomic.AddInt32(&t.afterCalled, 1)
-	return c
 }
 
 // AfterCalledTimes calculates number of times after is called.
-func (t *MockTimerClient) AfterCalledTimes() int32 {
-	return atomic.LoadInt32(&t.afterCalled)
+func (m *MockTimerClient) AfterCalledTimes() uint64 {
+	return atomic.LoadUint64(&m.afterCalled)
 }
 
 // TickCalledTimes calculates number of times tick is called.
-func (t *MockTimerClient) TickCalledTimes() int32 {
-	return atomic.LoadInt32(&t.tickCalled)
+func (m *MockTimerClient) TickCalledTimes() uint64 {
+	return atomic.LoadUint64(&m.tickCalled)
 }

@@ -31,15 +31,15 @@ func TryToGetValue(ch chan EmptyStruct) *EmptyStruct {
 		timeout <- true
 	}()
 	select {
-	case <-ch:
-		return &EmptyStruct{}
+	case v := <-ch:
+		return &v
 	case <-timeout:
 		return nil
 	}
 }
 
 func TickTestHelper(tickDuration int64, t *testing.T) {
-	timer := MockTimerClient{currentTime: 35534432431}
+	timer := &MockTimerClient{current: time.Unix(35534432431, 0)}
 	tickChan := make(chan EmptyStruct, 1)
 	tickFunc := func() {
 		// Go routine started
@@ -64,12 +64,12 @@ func TickTestHelper(tickDuration int64, t *testing.T) {
 			assert.False(t, ok)
 			initialIncrement := tickDuration / 2
 			// Not enough to trigger tick
-			timer.IncrementDuration(time.Duration(initialIncrement))
+			timer.Advance(time.Duration(initialIncrement))
 			durationIncremented += initialIncrement
 			ok = ChannelHasData(tickChan)
 			assert.False(t, ok)
 			// tick triggered
-			timer.IncrementDuration(time.Duration(tickDuration))
+			timer.Advance(time.Duration(tickDuration))
 			durationIncremented += tickDuration
 			val := TryToGetValue(tickChan)
 			assert.NotNil(t,
@@ -78,11 +78,11 @@ func TickTestHelper(tickDuration int64, t *testing.T) {
 					tickDuration,
 					i,
 					ticksToTrigger,
-					timer.currentTime))
+					timer.current))
 
 			// Adding 4th of the duration to trigger
 			durationForth := tickDuration / 4
-			timer.IncrementDuration(time.Duration(durationForth))
+			timer.Advance(time.Duration(durationForth))
 			durationIncremented += durationForth
 			ok = ChannelHasData(tickChan)
 			assert.False(t, ok)
@@ -91,15 +91,13 @@ func TickTestHelper(tickDuration int64, t *testing.T) {
 			// duration increment is zero
 			finalIncrement := tickDuration*2 - durationIncremented
 			// tick triggered
-			timer.IncrementDuration(time.Duration(finalIncrement))
+			timer.Advance(time.Duration(finalIncrement))
 			val = TryToGetValue(tickChan)
 			assert.NotNil(t, val)
 			durationIncremented = 0
 		}
 	}
-	timer.Dispose()
 
-	assert.EqualValues(t, 1, timer.killRoutinesCount)
 	assert.EqualValues(t, 1, timer.TickCalledTimes())
 }
 
@@ -112,7 +110,7 @@ func TestTickDuration454(t *testing.T) {
 func TestAfter(t *testing.T) {
 	var afterDuration int64
 	afterDuration = 10
-	timer := MockTimerClient{currentTime: 2153567564}
+	timer := MockTimerClient{current: time.Unix(2153567564, 0)}
 	afterChan := make(chan EmptyStruct, 1)
 	tickFunc := func() {
 		// Go routine started
@@ -133,22 +131,19 @@ func TestAfter(t *testing.T) {
 	assert.False(t, ok)
 	initialIncrement := afterDuration / 2
 	// Not enough to trigger after
-	timer.IncrementDuration(time.Duration(initialIncrement))
+	timer.Advance(time.Duration(initialIncrement))
 	ok = ChannelHasData(afterChan)
 	assert.False(t, ok)
 	// after triggered
-	timer.IncrementDuration(time.Duration(afterDuration))
+	timer.Advance(time.Duration(afterDuration))
 	val := TryToGetValue(afterChan)
-	assert.NotNil(t, val, fmt.Sprintf("Expected value passed thru the channel. After Duration: %v, Current Clock Time: %v", afterDuration, timer.currentTime))
+	assert.NotNil(t, val, fmt.Sprintf("Expected value passed thru the channel. After Duration: %v, Current Clock Time: %v", afterDuration, timer.current))
 
 	// After should trigger only once compared to tick
-	timer.IncrementDuration(time.Duration(afterDuration))
+	timer.Advance(time.Duration(afterDuration))
 	ok = ChannelHasData(afterChan)
 	assert.False(t, ok)
 
-	timer.Dispose()
-
-	assert.EqualValues(t, 1, timer.killRoutinesCount)
 	assert.EqualValues(t, 1, timer.AfterCalledTimes())
 }
 
@@ -156,7 +151,7 @@ func TestAfterTickTogether(t *testing.T) {
 	var tickDuration int64
 	tickDuration = 10
 	afterDuration := tickDuration * 2
-	timer := MockTimerClient{currentTime: 23082153551}
+	timer := MockTimerClient{current: time.Unix(23082153551, 0)}
 	tickChan := make(chan EmptyStruct, 1)
 	afterChan := make(chan EmptyStruct, 1)
 	tickFunc := func() {
@@ -200,14 +195,14 @@ func TestAfterTickTogether(t *testing.T) {
 			assert.False(t, ok)
 			initialIncrement := tickDuration / 2
 			// Not enough to trigger tick
-			timer.IncrementDuration(time.Duration(initialIncrement))
+			timer.Advance(time.Duration(initialIncrement))
 			durationIncremented += initialIncrement
 			ok = ChannelHasData(tickChan)
 			assert.False(t, ok)
 			ok = ChannelHasData(afterChan)
 			assert.False(t, ok)
 			// tick triggered
-			timer.IncrementDuration(time.Duration(tickDuration))
+			timer.Advance(time.Duration(tickDuration))
 			durationIncremented += tickDuration
 			val := TryToGetValue(tickChan)
 			assert.NotNil(t, val)
@@ -216,7 +211,7 @@ func TestAfterTickTogether(t *testing.T) {
 
 			// Adding 4th of the duration to trigger
 			durationForth := tickDuration / 4
-			timer.IncrementDuration(time.Duration(durationForth))
+			timer.Advance(time.Duration(durationForth))
 			durationIncremented += durationForth
 			ok = ChannelHasData(tickChan)
 			assert.False(t, ok)
@@ -227,9 +222,9 @@ func TestAfterTickTogether(t *testing.T) {
 			// duration increment is zero
 			finalIncrement := tickDuration*2 - durationIncremented
 			// tick triggered
-			timer.IncrementDuration(time.Duration(finalIncrement))
+			timer.Advance(time.Duration(finalIncrement))
 			// After will only trigger for first iteration as it only trigger once
-			if triggerIndex == 0 {
+			if (triggerIndex == 0) && (i == 0) {
 				val = TryToGetValue(afterChan)
 				assert.NotNil(t, val)
 			} else {
@@ -242,9 +237,7 @@ func TestAfterTickTogether(t *testing.T) {
 			durationIncremented = 0
 		}
 	}
-	timer.Dispose()
 
-	assert.EqualValues(t, 2, timer.killRoutinesCount)
 	assert.EqualValues(t, 1, timer.TickCalledTimes())
 	assert.EqualValues(t, 1, timer.AfterCalledTimes())
 }
