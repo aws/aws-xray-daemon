@@ -21,6 +21,9 @@ import (
 	log "github.com/cihub/seelog"
 )
 
+// Version number of the X-Ray daemon.
+const Version = "2.1.2"
+
 var configLocations = []string{
 	"/etc/amazon/xray/cfg.yaml",
 	"cfg.yaml",
