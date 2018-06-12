@@ -22,7 +22,7 @@ import (
 )
 
 // Version number of the X-Ray daemon.
-const Version = "2.1.2"
+const Version = "2.1.3"
 
 var configLocations = []string{
 	"/etc/amazon/xray/cfg.yaml",
