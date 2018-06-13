@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+
+## 2.1.3 (2018-06-13)
+- Updated AWS SDK dependency version to `1.14.1`
+- Refactored `MockTimerClient`
+- Moving version number variable to `cfg` package
+
 ## 2.1.2 (2018-05-14)
 - SystemD service file updates for Debian and Linux binaries: PR [#3](https://github.com/aws/aws-xray-daemon/pull/3)
 - Added Travis CI: PR [#7](https://github.com/aws/aws-xray-daemon/pull/7)

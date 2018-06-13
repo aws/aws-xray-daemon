@@ -13,6 +13,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/aws/aws-xray-daemon/daemon/cfg"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -20,9 +22,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/xray"
 	log "github.com/cihub/seelog"
 )
-
-// Version number of the X-Ray daemon.
-var versionNumber = "2.1.2"
 
 // XRay defines X-Ray api call structure.
 type XRay interface {
@@ -33,11 +32,6 @@ type XRay interface {
 // XRayClient represents X-Ray client.
 type XRayClient struct {
 	xRay *xray.XRay
-}
-
-// GetVersionNumber returns version number of X-Ray daemon.
-func GetVersionNumber() string {
-	return versionNumber
 }
 
 // PutTraceSegments makes PutTraceSegments api call on X-Ray client.
@@ -71,7 +65,7 @@ func requestXray(awsConfig *aws.Config, s *session.Session) XRay {
 	log.Debugf("Using Endpoint: %s", x.Endpoint)
 	var XRayVersionUserAgentHandler = request.NamedHandler{
 		Name: "tracing.XRayVersionUserAgentHandler",
-		Fn:   request.MakeAddToUserAgentHandler("xray", GetVersionNumber(), os.Getenv("AWS_EXECUTION_ENV")),
+		Fn:   request.MakeAddToUserAgentHandler("xray", cfg.Version, os.Getenv("AWS_EXECUTION_ENV")),
 	}
 	x.Handlers.Build.PushBackNamed(XRayVersionUserAgentHandler)
 

@@ -98,7 +98,7 @@ func init() {
 		f.ParseFlags()
 	}
 	if version {
-		fmt.Printf("AWS X-Ray daemon version: %v\n", conn.GetVersionNumber())
+		fmt.Printf("AWS X-Ray daemon version: %v\n", cfg.Version)
 		os.Exit(0)
 	}
 	config = c
@@ -156,7 +156,7 @@ func initDaemon(config *cfg.Config) *Daemon {
 	}
 	defer log.Flush()
 
-	log.Infof("Initializing AWS X-Ray daemon %v", conn.GetVersionNumber())
+	log.Infof("Initializing AWS X-Ray daemon %v", cfg.Version)
 
 	parameterConfig := cfg.ParameterConfigValue
 	receiverCount = parameterConfig.ReceiverRoutines
