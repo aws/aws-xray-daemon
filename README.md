@@ -52,8 +52,9 @@ Usage: X-Ray [options]
 7. -c  --config   Load a configuration file from the specified path.    
 8. -f  --log-file Output logs to the specified file path.    
 9. -l  --log-level    Log level, from most verbose to least: dev, debug, info, warn, error, prod (default).    
-10. -v --version  Show AWS X-Ray daemon version.    
-11. -h --help    Show this screen     
+10. -p --proxy-address  Proxy address through which to upload segments.
+11. -v --version  Show AWS X-Ray daemon version.
+12. -h --help    Show this screen
 
 ## Build  
 
