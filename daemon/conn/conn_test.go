@@ -62,7 +62,8 @@ func TestEC2Session(t *testing.T) {
 	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", false)
 	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
 	assert.Equal(t, *cfg.Region, ec2Region, "Region value fetched from ec2-metadata service")
-	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Fetch region %v from ec2 metadata", ec2Region)))
+	fmt.Printf("Logs: %v", log.Logs)
+	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from ec2 metadata", ec2Region)))
 }
 
 // fetch region value from environment variable
@@ -81,7 +82,7 @@ func TestRegionEnv(t *testing.T) {
 	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", true)
 	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
 	assert.Equal(t, *cfg.Region, region, "Region value fetched from environment")
-	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Fetch region %v from environment variables", region)))
+	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from environment variables", region)))
 }
 
 // Get region from the command line fo config file
@@ -96,7 +97,7 @@ func TestRegionArgument(t *testing.T) {
 	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, region, true)
 	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
 	assert.Equal(t, *cfg.Region, region, "Region value fetched from the environment")
-	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Fetch region %v from commandline/config file", region)))
+	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from commandline/config file", region)))
 }
 
 // exit function if no region value found
