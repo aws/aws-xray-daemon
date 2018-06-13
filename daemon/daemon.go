@@ -102,6 +102,7 @@ func init() {
 		os.Exit(0)
 	}
 	config = c
+	config.ProxyAddress = proxyAddress
 }
 
 func initCli(configFile string) (*cli.Flag, *cfg.Config) {

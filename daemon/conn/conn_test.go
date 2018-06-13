@@ -96,7 +96,7 @@ func TestRegionArgument(t *testing.T) {
 	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, region, true)
 	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
 	assert.Equal(t, *cfg.Region, region, "Region value fetched from the environment")
-	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Fetch region %v from commandline argument", region)))
+	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Fetch region %v from commandline/config file", region)))
 }
 
 // exit function if no region value found

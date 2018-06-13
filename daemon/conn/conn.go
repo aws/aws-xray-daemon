@@ -41,6 +41,7 @@ func (c *Conn) getEC2Region(s *session.Session) (string, error) {
 
 // getNewHTTPClient returns new HTTP client instance with provided configuration.
 func getNewHTTPClient(maxIdle int, requestTimeout int, noVerify bool, proxyAddress string) *http.Client {
+	log.Debugf("Using proxy address: %v", proxyAddress)
 	tls := &tls.Config{
 		InsecureSkipVerify: noVerify,
 	}
@@ -103,7 +104,7 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 		log.Debugf("Fetch region %v from environment variables", awsRegion)
 	} else if region != "" {
 		awsRegion = region
-		log.Debugf("Fetch region %v from commandline argument", awsRegion)
+		log.Debugf("Fetch region %v from commandline/config file", awsRegion)
 	} else if !noMetadata {
 		es := getDefaultSession()
 		awsRegion, err = cn.getEC2Region(es)
