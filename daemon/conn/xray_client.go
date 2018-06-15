@@ -11,7 +11,9 @@ package conn
 
 import (
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-xray-daemon/daemon/cfg"
 
@@ -35,18 +37,35 @@ type XRayClient struct {
 }
 
 // PutTraceSegments makes PutTraceSegments api call on X-Ray client.
-func (c XRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error) {
+func (c *XRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error) {
 	return c.xRay.PutTraceSegments(input)
 }
 
 // PutTelemetryRecords makes PutTelemetryRecords api call on X-Ray client.
-func (c XRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error) {
+func (c *XRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error) {
 	return c.xRay.PutTelemetryRecords(input)
 }
 
 // NewXRay creates a new instance of the XRay client with a aws configuration and session .
 func NewXRay(awsConfig *aws.Config, s *session.Session) XRay {
-	return requestXray(awsConfig, s)
+	x := xray.New(s, awsConfig)
+	log.Debugf("Using Endpoint: %s", x.Endpoint)
+
+	x.Handlers.Build.PushBackNamed(request.NamedHandler{
+		Name: "tracing.XRayVersionUserAgentHandler",
+		Fn:   request.MakeAddToUserAgentHandler("xray", cfg.Version, os.Getenv("AWS_EXECUTION_ENV")),
+	})
+
+	x.Handlers.Sign.PushFrontNamed(request.NamedHandler{
+		Name: "tracing.TimestampHandler",
+		Fn: func(r *request.Request) {
+			r.HTTPRequest.Header.Set("X-Amzn-Xray-Timestamp", strconv.FormatFloat(float64(time.Now().UnixNano())/float64(time.Second), 'f', 9, 64))
+		},
+	})
+
+	return &XRayClient{
+		xRay: x,
+	}
 }
 
 // IsTimeoutError checks whether error is timeout error.
@@ -58,19 +77,4 @@ func IsTimeoutError(err error) bool {
 		}
 	}
 	return false
-}
-
-func requestXray(awsConfig *aws.Config, s *session.Session) XRay {
-	x := xray.New(s, awsConfig)
-	log.Debugf("Using Endpoint: %s", x.Endpoint)
-	var XRayVersionUserAgentHandler = request.NamedHandler{
-		Name: "tracing.XRayVersionUserAgentHandler",
-		Fn:   request.MakeAddToUserAgentHandler("xray", cfg.Version, os.Getenv("AWS_EXECUTION_ENV")),
-	}
-	x.Handlers.Build.PushBackNamed(XRayVersionUserAgentHandler)
-
-	xRay := XRayClient{
-		xRay: x,
-	}
-	return xRay
 }
