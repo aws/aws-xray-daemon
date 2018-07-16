@@ -96,7 +96,7 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 	var s *session.Session
 	var err error
 	var awsRegion string
-	http := getNewHTTPClient(cfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, cfg.ParameterConfigValue.Processor.RequestTimeout, c.NoVerifySSL, c.ProxyAddress)
+	http := getNewHTTPClient(cfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, cfg.ParameterConfigValue.Processor.RequestTimeout, *c.NoVerifySSL, c.ProxyAddress)
 	s = cn.newAWSSession(roleArn)
 	regionEnv := os.Getenv("AWS_REGION")
 	if region == "" && regionEnv != "" {

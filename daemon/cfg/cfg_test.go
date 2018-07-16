@@ -81,9 +81,9 @@ Version: 1`
 	assert.EqualValues(t, c.Concurrency, 8)
 	assert.EqualValues(t, c.Logging.LogLevel, "prod")
 	assert.EqualValues(t, c.Logging.LogPath, "")
-	assert.EqualValues(t, c.Logging.LogRotation, true)
-	assert.EqualValues(t, c.NoVerifySSL, false)
-	assert.EqualValues(t, c.LocalMode, false)
+	assert.EqualValues(t, *c.Logging.LogRotation, true)
+	assert.EqualValues(t, *c.NoVerifySSL, false)
+	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
 	assert.EqualValues(t, c.Version, 1)
 }
@@ -143,9 +143,9 @@ Version: 1`
 	assert.EqualValues(t, c.Concurrency, 8)
 	assert.EqualValues(t, c.Logging.LogLevel, "prod")
 	assert.EqualValues(t, c.Logging.LogPath, "")
-	assert.EqualValues(t, c.Logging.LogRotation, true)
-	assert.EqualValues(t, c.NoVerifySSL, false)
-	assert.EqualValues(t, c.LocalMode, false)
+	assert.EqualValues(t, *c.Logging.LogRotation, true)
+	assert.EqualValues(t, *c.NoVerifySSL, false)
+	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
 	assert.EqualValues(t, c.Version, 1)
 
@@ -209,9 +209,9 @@ Version: 1`
 	assert.EqualValues(t, c.Concurrency, 8)
 	assert.EqualValues(t, c.Logging.LogLevel, "prod")
 	assert.EqualValues(t, c.Logging.LogPath, "")
-	assert.EqualValues(t, c.Logging.LogRotation, true)
-	assert.EqualValues(t, c.NoVerifySSL, false)
-	assert.EqualValues(t, c.LocalMode, false)
+	assert.EqualValues(t, *c.Logging.LogRotation, true)
+	assert.EqualValues(t, *c.NoVerifySSL, false)
+	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
 	assert.EqualValues(t, c.Version, 1)
 	clearTestFile()
@@ -237,6 +237,8 @@ Endpoint: "https://xxxx.xxxx.com"
 ResourceARN: ""
 RoleARN: ""
 Concurrency: 8
+Logging:
+  LogRotation: false
 Version: 1`
 	setupTestFile(configString)
 	c := merge(tstFilePath)
@@ -250,9 +252,9 @@ Version: 1`
 	assert.EqualValues(t, c.Concurrency, 8)
 	assert.EqualValues(t, c.Logging.LogLevel, "prod")
 	assert.EqualValues(t, c.Logging.LogPath, "")
-	assert.EqualValues(t, c.Logging.LogRotation, true)
-	assert.EqualValues(t, c.NoVerifySSL, false)
-	assert.EqualValues(t, c.LocalMode, false)
+	assert.EqualValues(t, *c.Logging.LogRotation, false)
+	assert.EqualValues(t, *c.NoVerifySSL, false)
+	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
 	assert.EqualValues(t, c.Version, 1)
 	clearTestFile()

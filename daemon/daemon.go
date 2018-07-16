@@ -123,7 +123,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 	socketConnection = "UDP"
 	regionFlag = defaultRegion
 	flag.StringVarF(&resourceARN, "resource-arn", "a", defaultResourceARN, "Amazon Resource Name (ARN) of the AWS resource running the daemon.")
-	flag.BoolVarF(&noMetadata, "local-mode", "o", defaultLocalMode, "Don't check for EC2 instance metadata.")
+	flag.BoolVarF(&noMetadata, "local-mode", "o", *defaultLocalMode, "Don't check for EC2 instance metadata.")
 	flag.IntVarF(&daemonProcessBufferMemoryMB, "buffer-memory", "m", defaultDaemonProcessSpaceLimitMB, "Change the amount of memory in MB that buffers can use (minimum 3).")
 	flag.StringVarF(&regionFlag, "region", "n", defaultRegion, "Send segments to X-Ray service in a specific region.")
 	flag.StringVarF(&udpAddress, "bind", "b", defaultUDPAddress, "Overrides default UDP address (127.0.0.1:2000).")
@@ -139,7 +139,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 func initDaemon(config *cfg.Config) *Daemon {
 	if logFile != "" {
 		var fileWriter io.Writer
-		if config.Logging.LogRotation {
+		if *config.Logging.LogRotation {
 			// Empty Archive path as code does not archive logs
 			apath := ""
 			maxSize := logRotationSize

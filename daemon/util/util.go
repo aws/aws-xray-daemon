@@ -47,3 +47,7 @@ func GetMinIntValue(a, b int) int {
 	}
 	return b
 }
+
+func Bool(b bool) *bool {
+	return &b
+}

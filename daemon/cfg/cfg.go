@@ -16,6 +16,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/aws/aws-xray-daemon/daemon/util"
 	"gopkg.in/yaml.v2"
 
 	log "github.com/cihub/seelog"
@@ -58,7 +59,7 @@ type Config struct {
 	// Structure for logging.
 	Logging struct {
 		// LogRotation, if true, will rotate log after 50 MB size of current log file.
-		LogRotation bool `yaml:"LogRotation"`
+		LogRotation *bool `yaml:"LogRotation"`
 		// The log level, from most verbose to least: dev, debug, info, warn, error, prod (default).
 		LogLevel string `yaml:"LogLevel"`
 		// Logs to the specified file path.
@@ -66,7 +67,7 @@ type Config struct {
 	} `yaml:"Logging"`
 
 	// Local mode to skip EC2 instance metadata check.
-	LocalMode bool `yaml:"LocalMode"`
+	LocalMode *bool `yaml:"LocalMode"`
 
 	// Amazon Resource Name (ARN) of the AWS resource running the daemon.
 	ResourceARN string `yaml:"ResourceARN"`
@@ -75,7 +76,7 @@ type Config struct {
 	RoleARN string `yaml:"RoleARN"`
 
 	// Enable or disable TLS certificate verification.
-	NoVerifySSL bool `yaml:"NoVerifySSL"`
+	NoVerifySSL *bool `yaml:"NoVerifySSL"`
 
 	// Upload segments to AWS X-Ray through a proxy.
 	ProxyAddress string `yaml:"ProxyAddress"`
@@ -97,18 +98,18 @@ func DefaultConfig() *Config {
 			UDPAddress: "127.0.0.1:2000",
 		},
 		Logging: struct {
-			LogRotation bool   `yaml:"LogRotation"`
+			LogRotation *bool  `yaml:"LogRotation"`
 			LogLevel    string `yaml:"LogLevel"`
 			LogPath     string `yaml:"LogPath"`
 		}{
-			LogRotation: true,
+			LogRotation: util.Bool(true),
 			LogLevel:    "prod",
 			LogPath:     "",
 		},
-		LocalMode:    false,
+		LocalMode:    util.Bool(false),
 		ResourceARN:  "",
 		RoleARN:      "",
-		NoVerifySSL:  false,
+		NoVerifySSL:  util.Bool(false),
 		ProxyAddress: "",
 		Version:      1,
 	}
@@ -354,8 +355,8 @@ func getIntValue(configValue, defaultValue int) int {
 	return configValue
 }
 
-func getBoolValue(configValue, defaultValue bool) bool {
-	if configValue == false {
+func getBoolValue(configValue, defaultValue *bool) *bool {
+	if configValue == nil {
 		return defaultValue
 	}
 	return configValue

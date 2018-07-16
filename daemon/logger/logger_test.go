@@ -14,7 +14,9 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
 	"github.com/aws/aws-xray-daemon/daemon/cfg"
+	"github.com/aws/aws-xray-daemon/daemon/util"
 
 	"github.com/cihub/seelog"
 	"github.com/stretchr/testify/assert"
@@ -81,11 +83,11 @@ func testLogger(t *testing.T, testCase TestCase) {
 	var out bytes.Buffer
 	config := &cfg.Config{
 		Logging: struct {
-			LogRotation bool   `yaml:"LogRotation"`
+			LogRotation *bool  `yaml:"LogRotation"`
 			LogLevel    string `yaml:"LogLevel"`
 			LogPath     string `yaml:"LogPath"`
 		}{
-			LogRotation: true,
+			LogRotation: util.Bool(true),
 			LogLevel:    "dev",
 			LogPath:     "/var/tmp/xray.log",
 		},
