@@ -14,6 +14,7 @@ type timer struct {
 	c        chan time.Time
 }
 
+// MockTimerClient contains mock timer client.
 type MockTimerClient struct {
 	sync.RWMutex
 
@@ -42,19 +43,21 @@ func (m *MockTimerClient) newTimer(d time.Duration, repeat bool) *timer {
 	return t
 }
 
+// After is mock of time.After().
 func (m *MockTimerClient) After(d time.Duration) <-chan time.Time {
 	atomic.AddUint64(&m.afterCalled, 1)
 
 	return m.newTimer(d, false).c
 }
 
+// Tick is mock of time.Tick().
 func (m *MockTimerClient) Tick(d time.Duration) <-chan time.Time {
 	atomic.AddUint64(&m.tickCalled, 1)
 
 	return m.newTimer(d, true).c
 }
 
-// simulate time passing and signal timers / tickers accordingly
+// Advance simulates time passing and signal timers / tickers accordingly
 func (m *MockTimerClient) Advance(d time.Duration) {
 	m.Lock()
 	m.current = m.current.Add(d)

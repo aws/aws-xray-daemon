@@ -11,6 +11,7 @@ package cfg
 
 import (
 	"errors"
+
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -23,6 +24,8 @@ import (
 var errFile = "error.log"
 var tstFileName = "test_config.yaml"
 var tstFilePath string
+var version2 = 2
+var version1 = 1
 
 func setupTestCase() {
 	LogFile = errFile
@@ -55,6 +58,7 @@ func TestLoadConfigFromBytes(t *testing.T) {
 	configString :=
 		`Socket:
   UDPAddress: "127.0.0.1:2000"
+  TCPAddress: "127.0.0.1:2000"
 TotalBufferSizeMB: 16
 Region: "us-east-1"
 Endpoint: "https://xxxx.xxxx.com"
@@ -68,11 +72,12 @@ Logging:
 NoVerifySSL: false
 LocalMode: false
 ProxyAddress: ""
-Version: 1`
+Version: 2`
 
 	c := loadConfigFromBytes([]byte(configString))
 
 	assert.EqualValues(t, c.Socket.UDPAddress, "127.0.0.1:2000")
+	assert.EqualValues(t, c.Socket.TCPAddress, "127.0.0.1:2000")
 	assert.EqualValues(t, c.TotalBufferSizeMB, 16)
 	assert.EqualValues(t, c.Region, "us-east-1")
 	assert.EqualValues(t, c.Endpoint, "https://xxxx.xxxx.com")
@@ -85,7 +90,7 @@ Version: 1`
 	assert.EqualValues(t, *c.NoVerifySSL, false)
 	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
-	assert.EqualValues(t, c.Version, 1)
+	assert.EqualValues(t, c.Version, version2)
 }
 
 func TestLoadConfigFromBytesTypeError(t *testing.T) {
@@ -116,6 +121,7 @@ func TestLoadConfigFromFile(t *testing.T) {
 	configString :=
 		`Socket:
   UDPAddress: "127.0.0.1:2000"
+  TCPAddress: "127.0.0.1:2000"
 TotalBufferSizeMB: 16
 Region: "us-east-1"
 Endpoint: "https://xxxx.xxxx.com"
@@ -129,7 +135,7 @@ Logging:
 NoVerifySSL: false
 LocalMode: false
 ProxyAddress: ""
-Version: 1`
+Version: 2`
 	setupTestFile(configString)
 
 	c := loadConfigFromFile(tstFilePath)
@@ -147,7 +153,7 @@ Version: 1`
 	assert.EqualValues(t, *c.NoVerifySSL, false)
 	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
-	assert.EqualValues(t, c.Version, 1)
+	assert.EqualValues(t, c.Version, version2)
 
 	clearTestFile()
 }
@@ -177,7 +183,7 @@ func TestLoadConfigFromFileDoesNotExist(t *testing.T) {
 	tearTestCase()
 }
 
-func TestLoadConfig(t *testing.T) {
+func TestLoadConfigVersion1(t *testing.T) {
 	configString :=
 		`Socket:
   UDPAddress: "127.0.0.1:2000"
@@ -201,6 +207,7 @@ Version: 1`
 	c := LoadConfig("")
 
 	assert.EqualValues(t, c.Socket.UDPAddress, "127.0.0.1:2000")
+	assert.EqualValues(t, c.Socket.TCPAddress, "127.0.0.1:2000") // TCP address for V! cfg.yaml
 	assert.EqualValues(t, c.TotalBufferSizeMB, 16)
 	assert.EqualValues(t, c.Region, "us-east-1")
 	assert.EqualValues(t, c.Endpoint, "https://xxxx.xxxx.com")
@@ -213,7 +220,49 @@ Version: 1`
 	assert.EqualValues(t, *c.NoVerifySSL, false)
 	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
-	assert.EqualValues(t, c.Version, 1)
+	assert.EqualValues(t, c.Version, version1)
+	clearTestFile()
+}
+
+func TestLoadConfigVersion2(t *testing.T) {
+	configString :=
+		`Socket:
+  UDPAddress: "127.0.0.1:2000"
+  TCPAddress : "127.0.0.2:3000"
+TotalBufferSizeMB: 16
+Region: "us-east-1"
+Endpoint: "https://xxxx.xxxx.com"
+ResourceARN: ""
+RoleARN: ""
+Concurrency: 8
+Logging:
+  LogRotation: true
+  LogPath: ""
+  LogLevel: "prod"
+NoVerifySSL: false
+LocalMode: false
+ProxyAddress: ""
+Version: 2`
+	setupTestFile(configString)
+	configLocations = append([]string{tstFilePath}, configLocations...)
+
+	c := LoadConfig("")
+
+	assert.EqualValues(t, c.Socket.UDPAddress, "127.0.0.1:2000")
+	assert.EqualValues(t, c.Socket.TCPAddress, "127.0.0.2:3000")
+	assert.EqualValues(t, c.TotalBufferSizeMB, 16)
+	assert.EqualValues(t, c.Region, "us-east-1")
+	assert.EqualValues(t, c.Endpoint, "https://xxxx.xxxx.com")
+	assert.EqualValues(t, c.ResourceARN, "")
+	assert.EqualValues(t, c.RoleARN, "")
+	assert.EqualValues(t, c.Concurrency, 8)
+	assert.EqualValues(t, c.Logging.LogLevel, "prod")
+	assert.EqualValues(t, c.Logging.LogPath, "")
+	assert.EqualValues(t, *c.Logging.LogRotation, true)
+	assert.EqualValues(t, *c.NoVerifySSL, false)
+	assert.EqualValues(t, *c.LocalMode, false)
+	assert.EqualValues(t, c.ProxyAddress, "")
+	assert.EqualValues(t, c.Version, version2)
 	clearTestFile()
 }
 
@@ -239,11 +288,12 @@ RoleARN: ""
 Concurrency: 8
 Logging:
   LogRotation: false
-Version: 1`
+Version: 2`
 	setupTestFile(configString)
 	c := merge(tstFilePath)
 
 	assert.EqualValues(t, c.Socket.UDPAddress, "127.0.0.1:3000")
+	assert.EqualValues(t, c.Socket.TCPAddress, "127.0.0.1:2000") // set to default value
 	assert.EqualValues(t, c.TotalBufferSizeMB, 8)
 	assert.EqualValues(t, c.Region, "us-east-2")
 	assert.EqualValues(t, c.Endpoint, "https://xxxx.xxxx.com")
@@ -256,7 +306,7 @@ Version: 1`
 	assert.EqualValues(t, *c.NoVerifySSL, false)
 	assert.EqualValues(t, *c.LocalMode, false)
 	assert.EqualValues(t, c.ProxyAddress, "")
-	assert.EqualValues(t, c.Version, 1)
+	assert.EqualValues(t, c.Version, version2)
 	clearTestFile()
 }
 
@@ -310,6 +360,57 @@ Concurrency: 8`
 	tearTestCase()
 }
 
+func TestConfigUnsupportedVersionSet(t *testing.T) {
+	setupTestCase()
+	configString :=
+		`Socket:
+  UDPAddress: "127.0.0.1:3000"
+TotalBufferSizeMB: 8
+Region: "us-east-2"
+Endpoint: "https://xxxx.xxxx.com"
+ResourceARN: ""
+RoleARN: ""
+Concurrency: 8
+Version: 10000`
+
+	goPath, err := setupTestFile(configString)
+
+	// Only run the failing part when a specific env variable is set
+	if os.Getenv("TEST_CONFIG_UNSUPPORTED_VERSION") == "1" {
+		merge(tstFilePath)
+		return
+	}
+
+	// Start the actual test in a different subprocess
+	cmd := exec.Command(os.Args[0], "-test.run=TestConfigUnsupportedVersionSet")
+	cmd.Env = append(os.Environ(), "TEST_CONFIG_UNSUPPORTED_VERSION=1")
+	if cmdErr := cmd.Start(); cmdErr != nil {
+		t.Fatal(cmdErr)
+	}
+
+	// Check that the program exited
+	error := cmd.Wait()
+	if e, ok := error.(*exec.ExitError); !ok || e.Success() {
+		t.Fatalf("Process ran with err %v, want exit status 1", err)
+	}
+
+	// Check if the log message is what we expected
+	if _, logErr := os.Stat(goPath + "/" + errFile); os.IsNotExist(logErr) {
+		t.Fatal(logErr)
+	}
+	gotBytes, err := ioutil.ReadFile(goPath + "/" + errFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(gotBytes)
+	expected := "Config Version Setting is not correct."
+	if !strings.Contains(got, expected) {
+		t.Fatalf("Unexpected log message. Got %s but should contain %s", got, expected)
+	}
+	clearTestFile()
+	tearTestCase()
+}
+
 func TestUseMemoryLimitInConfig(t *testing.T) {
 	setupTestCase()
 	configString :=
@@ -321,7 +422,7 @@ Endpoint: "https://xxxx.xxxx.com"
 ResourceARN: ""
 RoleARN: ""
 Concurrency: 8
-Version: 1`
+Version: 2`
 
 	goPath, err := setupTestFile(configString)
 
@@ -366,7 +467,7 @@ func TestConfigValidationForNotSupportFlags(t *testing.T) {
 	configString :=
 		`Socket:
   BufferSizeKB: 128
-Version: 1`
+Version: 2`
 
 	goPath, err := setupTestFile(configString)
 
@@ -411,7 +512,7 @@ func TestConfigValidationForNeedMigrationFlag(t *testing.T) {
 	configString :=
 		`Processor:
   Region: ""
-Version: 1`
+Version: 2`
 
 	goPath, err := setupTestFile(configString)
 
@@ -454,7 +555,7 @@ Version: 1`
 func TestConfigValidationForInvalidFlag(t *testing.T) {
 	setupTestCase()
 	configString := `ABCDE: true
-Version: 1`
+Version: 2`
 
 	goPath := os.Getenv("PWD")
 	if goPath == "" {
@@ -505,14 +606,13 @@ Version: 1`
 }
 
 func TestValidConfigArray(t *testing.T) {
-	validString := []string{"TotalBufferSizeMB", "Concurrency", "Endpoint", "Region", "Socket.UDPAddress", "Logging.LogRotation", "Logging.LogLevel", "Logging.LogPath",
-		"LocalMode", "ResourceARN", "RoleARN", "NoVerifySSL", "ProxyAddress", "Version"}
+	validString := []string{"TotalBufferSizeMB", "Concurrency", "Endpoint", "Region", "Socket.UDPAddress", "Socket.TCPAddress", "ProxyServer.IdleConnTimeout", "ProxyServer.MaxIdleConnsPerHost", "ProxyServer.MaxIdleConns", "Logging.LogRotation", "Logging.LogLevel", "Logging.LogPath", "LocalMode", "ResourceARN", "RoleARN", "NoVerifySSL", "ProxyAddress", "Version"}
 	testString := validConfigArray()
 	if len(validString) != len(testString) {
 		t.Fatalf("Unexpect test array length. Got %v but should be %v", len(testString), len(validString))
 	}
 	for i, v := range validString {
-		if v != testString[i] {
+		if !strings.EqualFold(v, testString[i]) {
 			t.Fatalf("Unexpect Flag in test array. Got %v but should be %v", testString[i], v)
 		}
 	}
@@ -527,7 +627,7 @@ Region: "us-east-2"
 Endpoint: "https://xxxx.xxxx.com"
 ResourceARN: ""
 RoleARN: ""
-Version: 1`
+Version: 2`
 
 	setupTestFile(configString)
 

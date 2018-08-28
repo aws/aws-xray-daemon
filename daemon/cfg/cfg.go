@@ -17,13 +17,16 @@ import (
 	"reflect"
 
 	"github.com/aws/aws-xray-daemon/daemon/util"
+
 	"gopkg.in/yaml.v2"
 
 	log "github.com/cihub/seelog"
 )
 
 // Version number of the X-Ray daemon.
-const Version = "2.1.3"
+const Version = "3.0.0"
+
+var cfgFileVersions = [...]int{1, 2} // Supported versions of cfg.yaml file.
 
 var configLocations = []string{
 	"/etc/amazon/xray/cfg.yaml",
@@ -54,7 +57,14 @@ type Config struct {
 	Socket struct {
 		// Address and port on which the daemon listens for UDP packets containing segment documents.
 		UDPAddress string `yaml:"UDPAddress"`
+		TCPAddress string `yaml:"TCPAddress"`
 	} `yaml:"Socket"`
+
+	ProxyServer struct {
+		IdleConnTimeout     int
+		MaxIdleConnsPerHost int
+		MaxIdleConns        int
+	}
 
 	// Structure for logging.
 	Logging struct {
@@ -94,8 +104,20 @@ func DefaultConfig() *Config {
 		Region:            "",
 		Socket: struct {
 			UDPAddress string `yaml:"UDPAddress"`
+			TCPAddress string `yaml:"TCPAddress"`
 		}{
 			UDPAddress: "127.0.0.1:2000",
+			TCPAddress: "127.0.0.1:2000",
+		},
+		ProxyServer: struct {
+			IdleConnTimeout     int
+			MaxIdleConnsPerHost int
+			MaxIdleConns        int
+		}{
+
+			IdleConnTimeout:     30,
+			MaxIdleConnsPerHost: 2,
+			MaxIdleConns:        0,
 		},
 		Logging: struct {
 			LogRotation *bool  `yaml:"LogRotation"`
@@ -321,11 +343,23 @@ func contains(s []string, e string) bool {
 
 func merge(configFile string) *Config {
 	userConfig := loadConfigFromFile(configFile)
-	if userConfig.Version != 1 {
+	versionMatch := false
+	for i := 0; i < len(cfgFileVersions); i++ {
+		if cfgFileVersions[i] == userConfig.Version {
+			versionMatch = true
+			break
+		}
+	}
+
+	if !versionMatch {
 		errorAndExit("Config Version Setting is not correct. Use X-Ray Daemon Config Migration Script to update the config file. Please refer to AWS X-Ray Documentation for more information.", nil)
 	}
 
 	userConfig.Socket.UDPAddress = getStringValue(userConfig.Socket.UDPAddress, DefaultConfig().Socket.UDPAddress)
+	userConfig.Socket.TCPAddress = getStringValue(userConfig.Socket.TCPAddress, DefaultConfig().Socket.TCPAddress)
+	userConfig.ProxyServer.IdleConnTimeout = DefaultConfig().ProxyServer.IdleConnTimeout
+	userConfig.ProxyServer.MaxIdleConnsPerHost = DefaultConfig().ProxyServer.MaxIdleConnsPerHost
+	userConfig.ProxyServer.MaxIdleConns = DefaultConfig().ProxyServer.MaxIdleConns
 	userConfig.TotalBufferSizeMB = getIntValue(userConfig.TotalBufferSizeMB, DefaultConfig().TotalBufferSizeMB)
 	userConfig.ResourceARN = getStringValue(userConfig.ResourceARN, DefaultConfig().ResourceARN)
 	userConfig.RoleARN = getStringValue(userConfig.RoleARN, DefaultConfig().RoleARN)

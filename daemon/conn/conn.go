@@ -128,6 +128,35 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 	return config, s
 }
 
+// ProxyServerTransport configures HTTP transport for TCP Proxy Server.
+func ProxyServerTransport(config *cfg.Config) *http.Transport {
+	tls := &tls.Config{
+		InsecureSkipVerify: *config.NoVerifySSL,
+	}
+
+	proxyAddr := getProxyAddress(config.ProxyAddress)
+	proxyURL := getProxyURL(proxyAddr)
+
+	// Connection timeout in seconds
+	idleConnTimeout := time.Duration(config.ProxyServer.IdleConnTimeout) * time.Second
+
+	transport := &http.Transport{
+		MaxIdleConns:        config.ProxyServer.MaxIdleConns,
+		MaxIdleConnsPerHost: config.ProxyServer.MaxIdleConnsPerHost,
+		IdleConnTimeout:     idleConnTimeout,
+		Proxy:               http.ProxyURL(proxyURL),
+		TLSClientConfig:     tls,
+
+		// If not disabled the transport will add a gzip encoding header
+		// to requests with no `accept-encoding` header value. The header
+		// is added after we sign the request which invalidates the
+		// signature.
+		DisableCompression: true,
+	}
+
+	return transport
+}
+
 func (c *Conn) newAWSSession(roleArn string) *session.Session {
 	var s *session.Session
 	var err error

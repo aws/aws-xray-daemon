@@ -1,11 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.0.0 (2018-08-28)
+- The daemon now serves as a proxy to the X-Ray SDK for API calls that are related to sampling rules. The proxy runs on TCP port 2000 and relays calls to get sampling rules and report sampling statistics to X-Ray. The TCP proxy server address can be configured from command line using `t` flag or by using `cfg.yaml` version `2` file.
+- `cfg.yaml` file version is changed to `2` and has an extra attribute. The daemon supports version `1` of cfg.yaml:
 
-## 2.1.3 (2018-06-13)
-- Updated AWS SDK dependency version to `1.14.1`
-- Refactored `MockTimerClient`
-- Moving version number variable to `cfg` package
+```
+  Socket:
+  # Change the address and port on which the daemon listens for HTTP requests to proxy to AWS X-Ray.
+  TCPAddress: "127.0.0.1:2000"
+```
+- Adds timestamp header `X-Amzn-Xray-Timestamp` to PutTraceSegments API calls made by the daemon
+- Adding support for configuring `ProxyAddress` through command line: PR [#10](https://github.com/aws/aws-xray-daemon/pull/10)
 
 ## 2.1.2 (2018-05-14)
 - SystemD service file updates for Debian and Linux binaries: PR [#3](https://github.com/aws/aws-xray-daemon/pull/3)

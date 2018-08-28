@@ -48,6 +48,7 @@ func GetMinIntValue(a, b int) int {
 	return b
 }
 
+// Bool return pointer to input parameter
 func Bool(b bool) *bool {
 	return &b
 }

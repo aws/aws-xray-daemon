@@ -12,9 +12,10 @@ package telemetry
 import (
 	"sync/atomic"
 	"time"
+	"unsafe"
+
 	"github.com/aws/aws-xray-daemon/daemon/conn"
 	"github.com/aws/aws-xray-daemon/daemon/util/timer"
-	"unsafe"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"

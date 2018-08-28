@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-xray-daemon/daemon/logger"
 	"github.com/aws/aws-xray-daemon/daemon/processor"
 	"github.com/aws/aws-xray-daemon/daemon/profiler"
+	"github.com/aws/aws-xray-daemon/daemon/proxy"
 	"github.com/aws/aws-xray-daemon/daemon/ringbuffer"
 	"github.com/aws/aws-xray-daemon/daemon/socketconn"
 	"github.com/aws/aws-xray-daemon/daemon/socketconn/udp"
@@ -49,6 +50,8 @@ const protocolSeparator = "\n"
 const logRotationSize int64 = 50 * 1024 * 1024
 
 var udpAddress string
+var tcpAddress string
+
 var stdFlag int
 var socketConnection string
 var cpuProfile string
@@ -85,6 +88,9 @@ type Daemon struct {
 
 	// Reference to Processor.
 	processor *processor.Processor
+
+	// HTTP Proxy server
+	server *proxy.Server
 }
 
 func init() {
@@ -114,6 +120,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 		defaultLogPath                   = cnfg.Logging.LogPath
 		defaultLogLevel                  = cnfg.Logging.LogLevel
 		defaultUDPAddress                = cnfg.Socket.UDPAddress
+		defaultTCPAddress                = cnfg.Socket.TCPAddress
 		defaultRoleARN                   = cnfg.RoleARN
 		defaultLocalMode                 = cnfg.LocalMode
 		defaultRegion                    = cnfg.Region
@@ -127,6 +134,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 	flag.IntVarF(&daemonProcessBufferMemoryMB, "buffer-memory", "m", defaultDaemonProcessSpaceLimitMB, "Change the amount of memory in MB that buffers can use (minimum 3).")
 	flag.StringVarF(&regionFlag, "region", "n", defaultRegion, "Send segments to X-Ray service in a specific region.")
 	flag.StringVarF(&udpAddress, "bind", "b", defaultUDPAddress, "Overrides default UDP address (127.0.0.1:2000).")
+	flag.StringVarF(&tcpAddress, "bind-tcp", "t", defaultTCPAddress, "Overrides default TCP address (127.0.0.1:2000).")
 	flag.StringVarF(&roleArn, "role-arn", "r", defaultRoleARN, "Assume the specified IAM role to upload segments to a different account.")
 	flag.StringVarF(&configFilePath, "config", "c", "", "Load a configuration file from the specified path.")
 	flag.StringVarF(&logFile, "log-file", "f", defaultLogPath, "Output logs to the specified file path.")
@@ -195,12 +203,21 @@ func initDaemon(config *cfg.Config) *Daemon {
 	// If calculated number of buffer is lower than our default, use calculated one. Otherwise, use default value.
 	parameterConfig.Processor.BatchSize = util.GetMinIntValue(parameterConfig.Processor.BatchSize, bufferLimit)
 
+	config.Socket.TCPAddress = tcpAddress // assign final tcp address either through config file or cmd line
+	// Create proxy http server
+	server, err := proxy.NewServer(config, awsConfig, session)
+	if err != nil {
+		log.Errorf("Unable to start http proxy server: %v", err)
+		os.Exit(1)
+	}
+
 	daemon := &Daemon{
 		done:      make(chan bool),
 		std:       std,
 		pool:      bufferPool,
 		count:     0,
 		sock:      sock,
+		server:    server,
 		processor: processor.New(awsConfig, session, processorCount, std, bufferPool, parameterConfig),
 	}
 
@@ -208,6 +225,9 @@ func initDaemon(config *cfg.Config) *Daemon {
 }
 
 func runDaemon(daemon *Daemon) {
+	// Start http server for proxying requests to xray
+	go daemon.server.Serve()
+
 	for i := 0; i < receiverCount; i++ {
 		go daemon.poll()
 	}
@@ -232,6 +252,7 @@ func (d *Daemon) close() {
 
 func (d *Daemon) stop() {
 	d.sock.Close()
+	d.server.Close()
 }
 
 // Returns number of bytes read from socket connection.

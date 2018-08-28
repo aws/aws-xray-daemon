@@ -9,6 +9,8 @@ Endpoint: ""
 Socket:
   # Change the address and port on which the daemon listens for UDP packets containing segment documents.
   UDPAddress: "127.0.0.1:2000"
+  # Change the address and port on which the daemon listens for HTTP requests to proxy to AWS X-Ray.
+  TCPAddress: "127.0.0.1:2000"
 Logging:
   LogRotation: true
   # Change the log level, from most verbose to least: dev, debug, info, warn, error, prod (default).
@@ -26,4 +28,4 @@ NoVerifySSL: false
 # Upload segments to AWS X-Ray through a proxy.
 ProxyAddress: ""
 # Daemon configuration file format version.
-Version: 1
+Version: 2

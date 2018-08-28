@@ -46,15 +46,16 @@ Usage: X-Ray [options]
 1. -a  --resource-arn Amazon Resource Name (ARN) of the AWS resource running the daemon.    
 2. -o  --local-mode   Don't check for EC2 instance metadata.    
 3. -m  --buffer-memory    Change the amount of memory in MB that buffers can use (minimum 3).    
-4. -n  --region   Send segments to the X-Ray service in a specific region.    
-5. -b  --bind    Overrides default UDP address (127.0.0.1:2000).    
-6. -r  --role-arn Assume the specified IAM role to upload segments to a different account.    
-7. -c  --config   Load a configuration file from the specified path.    
-8. -f  --log-file Output logs to the specified file path.    
-9. -l  --log-level    Log level, from most verbose to least: dev, debug, info, warn, error, prod (default).    
-10. -p --proxy-address  Proxy address through which to upload segments.
-11. -v --version  Show AWS X-Ray daemon version.
-12. -h --help    Show this screen
+4. -n  --region   Send segments to X-Ray service in a specific region.    
+5. -b  --bind    Overrides default UDP address (127.0.0.1:2000).  
+6. -t  --bind-tcp	Overrides default TCP address (127.0.0.1:2000).  
+7. -r  --role-arn Assume the specified IAM role to upload segments to a different account.    
+8. -c  --config   Load a configuration file from the specified path.    
+9. -f  --log-file Output logs to the specified file path.    
+10. -l  --log-level    Log level, from most verbose to least: dev, debug, info, warn, error, prod (default).    
+11. -p --proxy-address  Proxy address through which to upload segments.
+12. -v --version  Show AWS X-Ray daemon version.
+13. -h --help    Show this screen
 
 ## Build  
 
