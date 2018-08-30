@@ -27,7 +27,7 @@ For more details refer : [Link](https://docs.aws.amazon.com/xray/latest/devguide
 
 ## Installing  
 
-The AWS X-Ray Daemon is compatible with Go 1.7 and later.  
+The AWS X-Ray Daemon is compatible with Go 1.8 and later.
 
 Install the daemon using the following command:  
 
