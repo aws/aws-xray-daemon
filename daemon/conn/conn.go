@@ -178,7 +178,9 @@ func (c *Conn) newAWSSession(roleArn string) *session.Session {
 }
 
 func getDefaultSession() *session.Session {
-	result, serr := session.NewSession()
+	result, serr := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
 	if serr != nil {
 		log.Errorf("Error in creating session object : %v\n.", serr)
 		os.Exit(1)
