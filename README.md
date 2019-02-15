@@ -40,6 +40,13 @@ You can also use [Glide](https://github.com/Masterminds/glide) to manage depende
 ```  
 glide install  
 ```  
+
+## Configuration  
+
+The Aws X-Ray Daemon follows default credential resolution for the [aws-sdk-go](https://docs.aws.amazon.com/sdk-for-go/api/index.html).
+
+Follow the guidelines [here](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html) to configure an IAM role for the AWS X-Ray Daemon to run under.
+
 ## Daemon Usage (command line args)  
 
 Usage: X-Ray [options]   
