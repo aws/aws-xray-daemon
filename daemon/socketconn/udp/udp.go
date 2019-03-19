@@ -9,11 +9,11 @@
 
 package udp
 
-import "net"
 import (
+	"net"
 	"os"
-	"github.com/aws/aws-xray-daemon/daemon/socketconn"
 
+	"github.com/aws/aws-xray-daemon/daemon/socketconn"
 	log "github.com/cihub/seelog"
 )
 
@@ -23,7 +23,7 @@ type UDP struct {
 }
 
 // New returns new instance of UDP.
-func New(receiveBufferSize int, udpAddress string) socketconn.SocketConn {
+func New(udpAddress string) socketconn.SocketConn {
 	log.Debugf("Listening on UDP %v", udpAddress)
 	addr, err := net.ResolveUDPAddr("udp", udpAddress)
 	if err != nil {
@@ -31,11 +31,6 @@ func New(receiveBufferSize int, udpAddress string) socketconn.SocketConn {
 		os.Exit(1)
 	}
 	sock, err := net.ListenUDP("udp", addr)
-	if err != nil {
-		log.Errorf("%v", err)
-		os.Exit(1)
-	}
-	err = sock.SetReadBuffer(receiveBufferSize)
 	if err != nil {
 		log.Errorf("%v", err)
 		os.Exit(1)

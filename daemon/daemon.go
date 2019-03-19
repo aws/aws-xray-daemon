@@ -179,7 +179,7 @@ func initDaemon(config *cfg.Config) *Daemon {
 
 	var sock socketconn.SocketConn
 
-	sock = udp.New(receiveBufferSize, udpAddress)
+	sock = udp.New(udpAddress)
 
 	memoryLimit := evaluateBufferMemory(daemonProcessBufferMemoryMB)
 	log.Infof("Using buffer memory limit of %v MB", memoryLimit)
