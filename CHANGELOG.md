@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.0.1 (2019-04-16)
+- Removed allocating 64KB size to UDP socket connection. Now, the daemon relies on underlying OS default UDP receiver size for the UDP socket connection
+- Updated readme about credential configuration: [PR #21](https://github.com/aws/aws-xray-daemon/pull/21)
+
 ## 3.0.0 (2018-08-28)
 - The daemon now serves as a proxy to the X-Ray SDK for API calls that are related to sampling rules. The proxy runs default on TCP port 2000 and relays calls to get sampling rules and report sampling statistics to X-Ray. The TCP proxy server address can be configured from command line using `t` flag or by using `cfg.yaml` version `2` file.
 - `cfg.yaml` file version is changed to `2` and has an extra attribute. The daemon supports version `1` of cfg.yaml:
