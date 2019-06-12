@@ -13,10 +13,13 @@ import (
 	log "github.com/cihub/seelog"
 
 	"os"
+
 	"github.com/aws/aws-xray-daemon/daemon/bufferpool"
 	"github.com/aws/aws-xray-daemon/daemon/telemetry"
 	"github.com/aws/aws-xray-daemon/daemon/tracesegment"
 )
+
+var defaultCapacity = 250
 
 // RingBuffer is used to store trace segment received on X-Ray daemon address.
 type RingBuffer struct {
@@ -35,12 +38,13 @@ type RingBuffer struct {
 }
 
 // New returns new instance of RingBuffer configured with  BufferPool pool.
-func New(size int, pool *bufferpool.BufferPool) *RingBuffer {
-	if size == 0 {
+func New(bufferCount int, pool *bufferpool.BufferPool) *RingBuffer {
+	if bufferCount == 0 {
 		log.Error("The initial size of a queue should be larger than 0")
 		os.Exit(1)
 	}
-	channel := make(chan *tracesegment.TraceSegment, size)
+	capacity := getChannelSize(bufferCount)
+	channel := make(chan *tracesegment.TraceSegment, capacity)
 
 	return &RingBuffer{
 		Channel: channel,
@@ -49,6 +53,18 @@ func New(size int, pool *bufferpool.BufferPool) *RingBuffer {
 		count:   0,
 		pool:    pool,
 	}
+}
+
+// getChannelSize returns the size of the channel used by RingBuffer
+// Currently 1X times the total number of allocated buffers for the X-Ray daemon is returned.
+// This is proportional to number of buffers, since the segments are dropped if no new buffer can be allocated.
+// max(defaultCapacity, bufferCount) is returned by the function.
+func getChannelSize(bufferCount int) int {
+	capacity := 1 * bufferCount
+	if capacity < defaultCapacity {
+		return defaultCapacity
+	}
+	return capacity
 }
 
 // Send sends trace segment s to trace segment channel.

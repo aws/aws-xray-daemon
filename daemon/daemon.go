@@ -52,7 +52,6 @@ const logRotationSize int64 = 50 * 1024 * 1024
 var udpAddress string
 var tcpAddress string
 
-var stdFlag int
 var socketConnection string
 var cpuProfile string
 var memProfile string
@@ -169,7 +168,6 @@ func initDaemon(config *cfg.Config) *Daemon {
 
 	parameterConfig := cfg.ParameterConfigValue
 	receiverCount = parameterConfig.ReceiverRoutines
-	stdFlag = parameterConfig.SegmentChannel.Std
 	receiveBufferSize = parameterConfig.Socket.BufferSizeKB * 1024
 	cpuProfile = os.Getenv("XRAY_DAEMON_CPU_PROFILE")
 	memProfile = os.Getenv("XRAY_DAEMON_MEMORY_PROFILE")
@@ -183,14 +181,14 @@ func initDaemon(config *cfg.Config) *Daemon {
 
 	memoryLimit := evaluateBufferMemory(daemonProcessBufferMemoryMB)
 	log.Infof("Using buffer memory limit of %v MB", memoryLimit)
-	bufferLimit, err := bufferpool.GetPoolBufferCount(memoryLimit, receiveBufferSize)
+	buffers, err := bufferpool.GetPoolBufferCount(memoryLimit, receiveBufferSize)
 	if err != nil {
 		log.Errorf("%v", err)
 		os.Exit(1)
 	}
-	log.Infof("%v segment buffers allocated", bufferLimit)
-	bufferPool := bufferpool.Init(bufferLimit, receiveBufferSize)
-	std := ringbuffer.New(stdFlag, bufferPool)
+	log.Infof("%v segment buffers allocated", buffers)
+	bufferPool := bufferpool.Init(buffers, receiveBufferSize)
+	std := ringbuffer.New(buffers, bufferPool)
 	if config.Endpoint != "" {
 		log.Debugf("Using Endpoint read from Config file: %s", config.Endpoint)
 	}
@@ -201,7 +199,7 @@ func initDaemon(config *cfg.Config) *Daemon {
 	telemetry.Init(awsConfig, session, resourceARN, noMetadata)
 
 	// If calculated number of buffer is lower than our default, use calculated one. Otherwise, use default value.
-	parameterConfig.Processor.BatchSize = util.GetMinIntValue(parameterConfig.Processor.BatchSize, bufferLimit)
+	parameterConfig.Processor.BatchSize = util.GetMinIntValue(parameterConfig.Processor.BatchSize, buffers)
 
 	config.Socket.TCPAddress = tcpAddress // assign final tcp address either through config file or cmd line
 	// Create proxy http server

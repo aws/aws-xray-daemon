@@ -15,11 +15,11 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
 	"github.com/aws/aws-xray-daemon/daemon/bufferpool"
 	"github.com/aws/aws-xray-daemon/daemon/telemetry"
 	"github.com/aws/aws-xray-daemon/daemon/tracesegment"
 	"github.com/aws/aws-xray-daemon/daemon/util/test"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +27,7 @@ func init() {
 	telemetry.T = telemetry.GetTestTelemetry()
 }
 
-func TestRingBufferNew(t *testing.T) {
+func TestRingBufferNewWithZeroCapacity(t *testing.T) {
 	bufferLimit := 100
 	bufferSize := 256 * 1024
 	bufferPool := bufferpool.Init(bufferLimit, bufferSize)
@@ -37,7 +37,7 @@ func TestRingBufferNew(t *testing.T) {
 		return
 	}
 	// Start the actual test in a different subprocess
-	cmd := exec.Command(os.Args[0], "-test.run=TestRingBufferNew")
+	cmd := exec.Command(os.Args[0], "-test.run=TestRingBufferNewWithZeroCapacity")
 	cmd.Env = append(os.Environ(), "Test_New=1")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -47,8 +47,30 @@ func TestRingBufferNew(t *testing.T) {
 	if e, ok := err.(*exec.ExitError); !ok || e.Success() {
 		t.Fatalf("Process ran with err %v, want exit status 1", err)
 	}
+}
 
-	randomFlag := rand.Intn(100)
+func TestRingBufferNewWithDefaultCapacity(t *testing.T) {
+	bufferLimit := 100
+	bufferSize := 256 * 1024
+	bufferPool := bufferpool.Init(bufferLimit, bufferSize)
+
+	randomFlag := rand.Intn(defaultCapacity - 1)
+	ringBuffer := New(randomFlag, bufferPool) // Ring buffer initialized with less than default capacity value
+
+	assert.Equal(t, defaultCapacity, cap(ringBuffer.c), "The size of buffered channel should be equal to default capacity")
+	assert.Equal(t, defaultCapacity, cap(ringBuffer.Channel), "The size of buffered channel should be equal to default capacity")
+	assert.Equal(t, false, ringBuffer.Empty, "The ringBuffer is not empty")
+	assert.Equal(t, uint64(0), ringBuffer.count, "The truncated count should be 0")
+	assert.Equal(t, bufferPool, ringBuffer.pool, "The value of bufferpool should be same with the given value")
+
+}
+
+func TestRingBufferNew(t *testing.T) { // RingBuffer size greater than defaultCapacity
+	bufferLimit := 100
+	bufferSize := 256 * 1024
+	bufferPool := bufferpool.Init(bufferLimit, bufferSize)
+
+	randomFlag := getTestChannelSize()
 	ringBuffer := New(randomFlag, bufferPool)
 
 	assert.Equal(t, randomFlag, cap(ringBuffer.c), "The size of buffered channel should be same with the given number")
@@ -63,7 +85,7 @@ func TestRingBufferCloseChannel(t *testing.T) {
 	bufferLimit := 100
 	bufferSize := 256 * 1024
 	bufferPool := bufferpool.Init(bufferLimit, bufferSize)
-	randomFlag := rand.Intn(100)
+	randomFlag := getTestChannelSize()
 	ringBuffer := New(randomFlag, bufferPool)
 	ringBuffer.Close()
 	for i := 0; i < cap(ringBuffer.c); i++ {
@@ -78,7 +100,7 @@ func TestRingBufferSend(t *testing.T) {
 	bufferLimit := 100
 	bufferSize := 256 * 1024
 	bufferPool := bufferpool.Init(bufferLimit, bufferSize)
-	randomFlag := rand.Intn(100)
+	randomFlag := getTestChannelSize()
 	ringBuffer := New(randomFlag, bufferPool)
 	segment := tracesegment.GetTestTraceSegment()
 	for i := 0; i < randomFlag; i++ {
@@ -98,15 +120,16 @@ func TestRingBufferTruncatedCount(t *testing.T) {
 	bufferSize := 256 * 1024
 	bufferPool := bufferpool.Init(bufferLimit, bufferSize)
 	segment := tracesegment.GetTestTraceSegment()
-	ringBuffer := New(100, bufferPool)
-	randomFlag := rand.Intn(100)
-	for i := 0; i < 100+randomFlag; i++ {
+	randomFlag := getTestChannelSize()
+	ringBuffer := New(randomFlag, bufferPool)
+	extraSegments := 100
+	for i := 0; i < randomFlag+extraSegments; i++ {
 		ringBuffer.Send(&segment)
 	}
 	num := ringBuffer.TruncatedCount()
 
-	assert.Equal(t, num, uint64(randomFlag), "The truncated count should be same with the generated random number")
-	for i := 0; i < randomFlag; i++ {
+	assert.Equal(t, num, uint64(extraSegments), "The truncated count should be same with the extra segments sent")
+	for i := 0; i < extraSegments; i++ {
 		assert.True(t, strings.Contains(log.Logs[i], "Segment buffer is full. Dropping oldest segment document."))
 	}
 }
@@ -116,7 +139,7 @@ func TestRingBufferSendTruncated(t *testing.T) {
 	bufferLimit := 100
 	bufferSize := 256 * 1024
 	bufferPool := bufferpool.Init(bufferLimit, bufferSize)
-	randomFlag := rand.Intn(100) + 2
+	randomFlag := getTestChannelSize() + 2
 	ringBuffer := New(randomFlag, bufferPool)
 	var segment []tracesegment.TraceSegment
 	for i := 0; i < randomFlag; i++ {
@@ -136,4 +159,9 @@ func TestRingBufferSendTruncated(t *testing.T) {
 	assert.Equal(t, &segment[2], <-ringBuffer.c, "Truncate the second segment that in the original buffered channel")
 	assert.Equal(t, randomFlag, cap(ringBuffer.c), "The buffered channel still full after truncating")
 	assert.True(t, strings.Contains(log.Logs[0], "Segment buffer is full. Dropping oldest segment document."))
+}
+
+// getTestChannelSize returns a random number greater than or equal to defaultCapacity
+func getTestChannelSize() int {
+	return rand.Intn(50) + defaultCapacity
 }
