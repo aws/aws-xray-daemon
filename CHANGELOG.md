@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 3.0.2 (2019-04-19)
+## 3.0.2 (2019-06-19)
 - Reconfiguring ring buffer channel size to number of buffers allocated to the daemon instead of fix 250 traces
 
 ## 3.0.1 (2019-04-16)
