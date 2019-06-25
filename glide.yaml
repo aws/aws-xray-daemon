@@ -1,7 +1,7 @@
 package: .
 import:
 - package: github.com/aws/aws-sdk-go
-  version: 1.14.1
+  version: 1.20.10
 - package: github.com/cihub/seelog
 - package: github.com/stretchr/testify
 - package: github.com/shirou/gopsutil

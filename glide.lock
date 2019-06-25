@@ -1,8 +1,8 @@
-hash: 8e3dbc51967e922752716a0bcd7154cb03c11ab99752516a324a5d0f8de3c058
-updated: 2018-06-07T12:18:38.96159244-07:00
+hash: f179ffc1f5419c3f1e546a03fc463f8ff3f65ed3dc45884618f3cf81dc8f2819
+updated: 2019-06-27T10:45:51.819582571-07:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 47309c012812d9e9c488a54313e5cdfa7479df93
+  version: c71adb808b2e83f81381bee6f12be7e6ae4d3248
   subpackages:
   - aws
   - aws/awserr
@@ -13,6 +13,7 @@ imports:
   - aws/credentials
   - aws/credentials/ec2rolecreds
   - aws/credentials/endpointcreds
+  - aws/credentials/processcreds
   - aws/credentials/stscreds
   - aws/csm
   - aws/defaults
@@ -21,8 +22,10 @@ imports:
   - aws/request
   - aws/session
   - aws/signer/v4
+  - internal/ini
   - internal/sdkio
   - internal/sdkrand
+  - internal/sdkuri
   - internal/shareddefaults
   - private/protocol
   - private/protocol/json/jsonutil
@@ -41,8 +44,6 @@ imports:
   - archive/gzip
   - archive/tar
   - archive/zip
-- name: github.com/go-ini/ini
-  version: 06f5f3d67269ccec1fe5fe4134ba6e982984f7f5
 - name: github.com/go-ole/go-ole
   version: a1ec82a652ebc7e784d7df887cfb31061aeabbcc
   subpackages:

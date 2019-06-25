@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-xray-daemon/daemon/util/test"
 
 	"github.com/stretchr/testify/mock"
@@ -46,7 +47,7 @@ func (c *mockConn) getEC2Region(s *session.Session) (string, error) {
 	return ec2Region, nil
 }
 
-func (c *mockConn) newAWSSession(roleArn string) *session.Session {
+func (c *mockConn) newAWSSession(roleArn string, region string) *session.Session {
 	return c.sn
 }
 
@@ -180,13 +181,13 @@ func TestLoadEnvConfigCreds(t *testing.T) {
 		os.Setenv(k, v)
 	}
 	c := &Conn{}
-	cfg := c.newAWSSession("")
+	cfg := c.newAWSSession("", "")
 	value, err := cfg.Config.Credentials.Get()
 
 	assert.Nil(t, err, "Expect no error")
 	assert.Equal(t, cases.Val, value, "Expect the credentials value to match")
 
-	cfgA := c.newAWSSession("ROLEARN")
+	cfgA := c.newAWSSession("ROLEARN", "TEST")
 	valueA, _ := cfgA.Config.Credentials.Get()
 
 	assert.Equal(t, "", valueA.AccessKeyID, "Expect the value to be empty")
@@ -245,6 +246,54 @@ func TestGetProxyAddressPriority(t *testing.T) {
 	os.Setenv("HTTPS_PROXY", "https://127.0.0.1:8888")
 
 	assert.Equal(t, "https://127.0.0.1:9999", getProxyAddress("https://127.0.0.1:9999"), "Expect function return value to be same with input")
+}
+
+func TestGetPartition1(t *testing.T) {
+	r := "us-east-1"
+	p := getPartition(r)
+	assert.Equal(t, endpoints.AwsPartitionID, p)
+}
+
+func TestGetPartition2(t *testing.T) {
+	r := "cn-north-1"
+	p := getPartition(r)
+	assert.Equal(t, endpoints.AwsCnPartitionID, p)
+}
+
+func TestGetPartition3(t *testing.T) {
+	r := "us-gov-east-1"
+	p := getPartition(r)
+	assert.Equal(t, endpoints.AwsUsGovPartitionID, p)
+}
+
+func TestGetPartition4(t *testing.T) { // if a region is not present in the array
+	r := "XYZ"
+	p := getPartition(r)
+	assert.Equal(t, "", p)
+}
+
+func TestGetSTSRegionalEndpoint1(t *testing.T) {
+	r := "us-east-1"
+	p := getSTSRegionalEndpoint(r)
+	assert.Equal(t, "https://sts.us-east-1.amazonaws.com", p)
+}
+
+func TestGetSTSRegionalEndpoint2(t *testing.T) {
+	r := "cn-north-1"
+	p := getSTSRegionalEndpoint(r)
+	assert.Equal(t, "https://sts.cn-north-1.amazonaws.com.cn", p)
+}
+
+func TestGetSTSRegionalEndpoint3(t *testing.T) {
+	r := "us-gov-east-1"
+	p := getSTSRegionalEndpoint(r)
+	assert.Equal(t, "https://sts.us-gov-east-1.amazonaws.com", p)
+}
+
+func TestGetSTSRegionalEndpoint4(t *testing.T) { // if a region is not present in the array
+	r := "XYZ"
+	p := getPartition(r)
+	assert.Equal(t, "", p)
 }
 
 func stashEnv() []string {
