@@ -155,3 +155,51 @@ func TestEndpoint5(t *testing.T) {
 	assert.Equal(t, e, result, "Endpoint created from region value")
 	assert.Nil(t, err)
 }
+
+// Testing AWS China partition
+func TestEndpoint6(t *testing.T) {
+	e := "https://xray.cn-northwest-1.amazonaws.com.cn"
+	awsCfg := &aws.Config{
+		Endpoint: aws.String(""),
+		Region:   aws.String("cn-northwest-1"),
+	}
+	result, err := getServiceEndpoint(awsCfg)
+	assert.Equal(t, e, result, "creating endpoint from region")
+	assert.Nil(t, err)
+}
+
+// Testing AWS China partition
+func TestEndpoint7(t *testing.T) {
+	e := "https://xray.cn-north-1.amazonaws.com.cn"
+	awsCfg := &aws.Config{
+		Endpoint: aws.String(""),
+		Region:   aws.String("cn-north-1"),
+	}
+	result, err := getServiceEndpoint(awsCfg)
+	assert.Equal(t, e, result, "creating endpoint from region")
+	assert.Nil(t, err)
+}
+
+// Testing AWS Gov partition
+func TestEndpoint8(t *testing.T) {
+	e := "https://xray.us-gov-east-1.amazonaws.com"
+	awsCfg := &aws.Config{
+		Endpoint: aws.String(""),
+		Region:   aws.String("us-gov-east-1"),
+	}
+	result, err := getServiceEndpoint(awsCfg)
+	assert.Equal(t, e, result, "creating endpoint from region")
+	assert.Nil(t, err)
+}
+
+// Testing AWS Gov partition
+func TestEndpoint9(t *testing.T) {
+	e := "https://xray.us-gov-west-1.amazonaws.com"
+	awsCfg := &aws.Config{
+		Endpoint: aws.String(""),
+		Region:   aws.String("us-gov-west-1"),
+	}
+	result, err := getServiceEndpoint(awsCfg)
+	assert.Equal(t, e, result, "creating endpoint from region")
+	assert.Nil(t, err)
+}

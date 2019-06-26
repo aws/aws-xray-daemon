@@ -14,9 +14,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/aws/aws-xray-daemon/daemon/cfg"
@@ -36,17 +35,19 @@ type Server struct {
 // Requests are forwarded to the endpoint in the given config.
 // Requests are signed using credentials from the given config.
 func NewServer(cfg *cfg.Config, awsCfg *aws.Config, sess *session.Session) (*Server, error) {
-
 	_, err := net.ResolveTCPAddr("tcp", cfg.Socket.TCPAddress)
 	if err != nil {
 		log.Errorf("%v", err)
 		os.Exit(1)
 	}
-
 	endPoint, er := getServiceEndpoint(awsCfg)
+
 	if er != nil {
 		return nil, fmt.Errorf("%v", er)
 	}
+
+	log.Infof("HTTP Proxy server using X-Ray Endpoint : %v", endPoint)
+
 	// Parse url from endpoint
 	url, err := url.Parse(endPoint)
 	if err != nil {
@@ -65,6 +66,12 @@ func NewServer(cfg *cfg.Config, awsCfg *aws.Config, sess *session.Session) (*Ser
 
 		// Handler for modifying and forwarding requests
 		Director: func(req *http.Request) {
+			if req != nil && req.URL != nil {
+				log.Debugf("Received request on HTTP Proxy server : %s", req.URL.String())
+			} else {
+				log.Debug("Request/Request.URL received on HTTP Proxy server is nil")
+			}
+
 			// Remove connection header before signing request, otherwise the
 			// reverse-proxy will remove the header before forwarding to X-Ray
 			// resulting in a signed header being missing from the request.
@@ -132,13 +139,22 @@ func (s *Server) Close() {
 	s.Server.Close()
 }
 
+// getServiceEndpoint returns X-Ray service endpoint.
+// It is guaranteed that awsCfg config instance is non-nil and the region value is non nil or non empty in awsCfg object.
+// Currently the caller takes care of it.
 func getServiceEndpoint(awsCfg *aws.Config) (string, error) {
 	if awsCfg.Endpoint == nil || *awsCfg.Endpoint == "" {
 		if awsCfg.Region == nil || *awsCfg.Region == "" {
 			return "", errors.New("unable to generate endpoint from region with nil value")
 		}
-		resolved, err := endpoints.DefaultResolver().EndpointFor(service, *awsCfg.Region)
+		resolved, err := endpoints.DefaultResolver().EndpointFor(service, *awsCfg.Region, setResolverConfig())
 		return resolved.URL, err
 	}
 	return *awsCfg.Endpoint, nil
+}
+
+func setResolverConfig() func(*endpoints.Options) {
+	return func(p *endpoints.Options) {
+		p.ResolveUnknownService = true
+	}
 }

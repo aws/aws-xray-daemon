@@ -127,6 +127,7 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 		os.Exit(1)
 	}
 	s = cn.newAWSSession(roleArn, awsRegion)
+
 	config := &aws.Config{
 		Region:                 aws.String(awsRegion),
 		DisableParamValidation: aws.Bool(true),
