@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.1.0 (2019-07-01)
+- STS credentials are fetched from STS regional endpoint instead of global endpoint. If the configured region is disabled for the STS token, the credentials are 
+fetched from primary regional endpoint in that AWS partition. The primary regional endpoint cannot be disabled for STS token.
+- Updated AWS Go dependency to version 1.20.10
+- Added debug log on request received for HTTP proxy server
+- Added info log for the X-Ray service endpoint used by HTTP Proxy server
+- Updated X-Ray service endpoint resolution for HTTP Proxy server
+
 ## 3.0.2 (2019-06-19)
 - Reconfiguring ring buffer channel size to number of buffers allocated to the daemon instead of fix 250 traces
 

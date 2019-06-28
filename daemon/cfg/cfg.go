@@ -24,7 +24,7 @@ import (
 )
 
 // Version number of the X-Ray daemon.
-const Version = "3.0.2"
+const Version = "3.1.0"
 
 var cfgFileVersions = [...]int{1, 2} // Supported versions of cfg.yaml file.
 
