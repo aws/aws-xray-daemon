@@ -18,7 +18,7 @@ Restart=always
 LogsDirectory=xray
 LogsDirectoryMode=0755
 ConfigurationDirectory=amazon/xray
-ConfigurationDirectoryMode=0700
+ConfigurationDirectoryMode=0755
 
 [Install]
 WantedBy=network-online.target
