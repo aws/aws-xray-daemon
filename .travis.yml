@@ -10,7 +10,7 @@ services:
   - docker
 
 env:
-  GO111MODULE: on
+  - GO111MODULE=on
 
 install:
   - go mod download
