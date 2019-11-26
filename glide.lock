@@ -1,8 +1,8 @@
-hash: f179ffc1f5419c3f1e546a03fc463f8ff3f65ed3dc45884618f3cf81dc8f2819
-updated: 2019-06-27T10:45:51.819582571-07:00
+hash: 5e6315cb47f0838c1961f08c20e689a5dc5058a476047c430b9e25e59a3b5446
+updated: 2019-11-26T16:32:54.654152225Z
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: c71adb808b2e83f81381bee6f12be7e6ae4d3248
+  version: da1bcf347b8a39f8222e2799f772112761b6f25c
   subpackages:
   - aws
   - aws/awserr
@@ -24,6 +24,7 @@ imports:
   - aws/signer/v4
   - internal/ini
   - internal/sdkio
+  - internal/sdkmath
   - internal/sdkrand
   - internal/sdkuri
   - internal/shareddefaults
@@ -36,6 +37,7 @@ imports:
   - private/protocol/restjson
   - private/protocol/xml/xmlutil
   - service/sts
+  - service/sts/stsiface
   - service/xray
 - name: github.com/cihub/seelog
   version: f561c5e57575bb1e0a2167028b7339b3a8d16fb4
