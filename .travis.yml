@@ -18,9 +18,11 @@ install:
 script:
   - make test
 
-after_success:
-  - make build-docker
-  - make push-docker
+deploy:
+  provider: script
+  script: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD && make build-docker && make push-docker
+  on:
+    tags: true
 
 matrix:
   allow_failures:

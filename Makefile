@@ -53,7 +53,7 @@ build-docker:
 
 .PHONY: push-docker
 push-docker:
-	docker push -t amazon/aws-xray-daemon:$(shell cat VERSION)
+	docker push amazon/aws-xray-daemon:$(shell cat VERSION)
 
 .PHONY: zip-linux
 zip-linux:
