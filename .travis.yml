@@ -1,22 +1,26 @@
 language: go
 
-go_import_path: github.com/aws/aws-xray-daemon
-
-sudo: required
-
 go:
-  - "1.10"
-  - "1.11"
+  - "1.13"
   - "tip"
 
+go_import_path: github.com/aws/aws-xray-daemon
+
+services:
+  - docker
+
+env:
+  GO111MODULE: on
 
 install:
-  - go get -v github.com/Masterminds/glide
-  - cd $GOPATH/src/github.com/Masterminds/glide && git checkout 67790b3dbede72cfdc54aa53be4706322c9499e0 && go install && cd -
-  - glide install
+  - go mod download
 
 script:
   - make test
+
+after_success:
+  - make build-docker
+  - make push-docker
 
 matrix:
   allow_failures:

@@ -6,7 +6,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/aws/aws-xray-daemon/daemon/cfg"
+	"github.com/aws/aws-xray-daemon/pkg/cfg"
 )
 
 // version-gen is a simple program that generates the daemon version number and writes to VERSION file.
