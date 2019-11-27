@@ -10,8 +10,6 @@ endif
 export BGO_SPACE=$(shell pwd)
 path := $(BGO_SPACE):$(WORKSPACE)
 
-# export GOPATH
-
 build: pre-build create-folder copy-file build-mac build-linux build-windows zip-linux zip-osx zip-win
 
 packaging: package-rpm package-deb
