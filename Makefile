@@ -92,4 +92,4 @@ fmt:
 .PHONY: clean-folder
 clean-folder:
 	cd build && \
-	find . ! -name "xray" ! -name "." -type d -exec rm -rf {} +
+	find . ! -name "xray" ! -name "." -type d -exec rm -rf {} + || true

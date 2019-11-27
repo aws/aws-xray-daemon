@@ -17,9 +17,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' \
     -o daemon ./cmd/tracing/daemon.go ./cmd/tracing/tracing.go
 
 FROM scratch
-COPY --from=build-env /go/src/github.com/aws/aws-xray-daemon/daemon .
+COPY --from=build-env /go/src/github.com/aws/aws-xray-daemon/daemon /usr/bin/xray
 COPY --from=build-env /etc/passwd /etc/passwd
 COPY --from=build-env /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY pkg/cfg.yaml /etc/amazon/xray/cfg.yaml
 USER xray
-ENTRYPOINT ["/daemon"]
+ENTRYPOINT ["/usr/bin/xray", "-t", "0.0.0.0:2000", "-b", "0.0.0.0:2000"]
+EXPOSE 2000/udp
+EXPOSE 2000/tcp
