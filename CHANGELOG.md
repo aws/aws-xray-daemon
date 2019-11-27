@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.2.0 (2019-11-26)
+- Do not fail when cleaning build folder
+- Bumping up aws-sdk-go to enable IAM Roles for Service Account support in Kubernetes deployments
+- xray.service: explicitly set ConfigurationDirectoryMode to 0755
+
 ## 3.1.0 (2019-07-01)
 - STS credentials are fetched from STS regional endpoint instead of global endpoint. If the configured region is disabled for the STS token, the credentials are 
 fetched from primary regional endpoint in that AWS partition. The primary regional endpoint cannot be disabled for STS token.
