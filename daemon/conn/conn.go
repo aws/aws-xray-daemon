@@ -112,18 +112,18 @@ func getRegionFromECSMetadata() string {
 	var err error
 	var region string
 	region = ""
-	ecsMetadataEnabled := os.Getenv("ECS_ENABLE_CONTAINER_METADATA")
-	ecsMetadataEnabled := strings.ToLower(ecsMetadataEnabled)
+	ecsMetadataEnabled = os.Getenv("ECS_ENABLE_CONTAINER_METADATA")
+	ecsMetadataEnabled = strings.ToLower(ecsMetadataEnabled)
 	if ecsMetadataEnabled == "true" {
-		metadataFilePath := os.Getenv("ECS_CONTAINER_METADATA_FILE")
-		metadataFile, err := ioutil.ReadFile(metadataFilePath)
+		metadataFilePath = os.Getenv("ECS_CONTAINER_METADATA_FILE")
+		metadataFile, err = ioutil.ReadFile(metadataFilePath)
 		if err != nil {
 			log.Errorf("Unable to open ECS metadata file: %v\n", err)
 		} else {
 			if err := json.Unmarshal(metadataFile, &dat); err != nil {
 				log.Errorf("Unable to read ECS metadatafile contents: %v", err)
 			} else {
-				taskArn := strings.Split(dat["TaskARN"].(string), ":")
+				taskArn = strings.Split(dat["TaskARN"].(string), ":")
 				region = taskArn[3]
 				log.Debugf("Fetch region %v from ECS metadata file", region)
 			}
@@ -150,6 +150,7 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 		awsRegion, err = cn.getEC2Region(es)
 		if err != nil {
 			log.Errorf("Unable to retrieve the region from the EC2 instance %v\n", err)
+			awsRegion = getRegionFromECSMetadata()
 		} else {
 			log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
 		}
