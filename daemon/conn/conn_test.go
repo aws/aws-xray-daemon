@@ -16,8 +16,6 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
-	"log"
-	"bytes"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-xray-daemon/daemon/util/test"
@@ -189,58 +187,59 @@ func TestValidECSRegion(t *testing.T) {
     "HostPublicIPv4Address": "203.0.113.0"
 }`
 	setupTestFile(metadataFile)
+	env := stashEnv()
+	defer popEnv(env)
 	os.Setenv("ECS_ENABLE_CONTAINER_METADATA", "true")
 	os.Setenv("ECS_CONTAINER_METADATA_FILE", tstFilePath)
 	testString := getRegionFromECSMetadata()
 
-	assert.EqualValues(t, testString, "us-east-1")
+	assert.EqualValues(t, "us-east-1", testString)
 	clearTestFile()
 	os.Clearenv()
 }
 
 // getRegionFromECSMetadata() returns an empty string if ECS metadata related env is not set
 func TestNoECSMetadata(t *testing.T){
-	os.Clearenv()
-
+	env := stashEnv()
+	defer popEnv(env)
 	testString := getRegionFromECSMetadata()
 
-	assert.EqualValues(t, testString, "")
+	assert.EqualValues(t, "", testString)
 }
-
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be parsed as valid JSON
 func TestInvalidECSMetadata(t *testing.T){
-	metadataFile := `][foobar})(`
+	metadataFile := "][foobar})("
 	setupTestFile(metadataFile)
+	env := stashEnv()
+	defer popEnv(env)
 	os.Setenv("ECS_ENABLE_CONTAINER_METADATA", "true")
 	os.Setenv("ECS_CONTAINER_METADATA_FILE", tstFilePath)
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer func() {
-		log.SetOutput(os.Stderr)
-	}()
+	log := test.LogSetup()
+
 	testString := getRegionFromECSMetadata()
 
-	assert.EqualValues(t, testString, "")
-	assert.Contains(t, buf, "Unable to read")
+	assert.EqualValues(t, "", testString)
+	assert.True(t, strings.Contains(log.Logs[0], "Unable to read"))
 
 	clearTestFile()
 }
+
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be opened
 func TestMissingECSMetadataFile(t *testing.T){
-	setupTestFile("")
-	os.Setenv("ECS_ENABLE_CONTAINER_METADATA", "true")
-	os.Setenv("ECS_CONTAINER_METADATA_FILE", tstFilePath)
+	metadataFile := "foobar"
+	setupTestFile(metadataFile)
+	env := stashEnv()
+	defer popEnv(env)
 	clearTestFile()
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer func() {
-		log.SetOutput(os.Stderr)
 
-	}()
+	os.Setenv("ECS_ENABLE_CONTAINER_METADATA", "true")
+	os.Setenv("ECS_CONTAINER_METADATA_FILE", metadataFile)
+	log := test.LogSetup()
+
 	testString := getRegionFromECSMetadata()
 
-	assert.EqualValues(t, testString, "")
-	assert.Contains(t, buf, "Unable to open")
+	assert.EqualValues(t, "", testString)
+	assert.True(t, strings.Contains(log.Logs[0], "Unable to open"))
 }
 
 // getEC2Region() returns nil region and error, resulting in exiting the process
