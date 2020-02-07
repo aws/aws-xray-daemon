@@ -15,6 +15,9 @@ import (
 	"net/url"
 	"os"
 	"time"
+	"encoding/json"
+	"io/ioutil"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -98,6 +101,35 @@ func getProxyURL(finalProxyAddress string) *url.URL {
 		proxyURL = nil
 	}
 	return proxyURL
+}
+
+func getRegionFromECSMetadata() string {
+	var ecsMetadataEnabled string
+	var metadataFilePath string
+	var metadataFile []byte
+	var dat map[string]interface{}
+	var taskArn []string
+	var err error
+	var region string
+	region = ""
+	ecsMetadataEnabled := os.Getenv("ECS_ENABLE_CONTAINER_METADATA")
+	ecsMetadataEnabled := strings.ToLower(ecsMetadataEnabled)
+	if ecsMetadataEnabled == "true" {
+		metadataFilePath := os.Getenv("ECS_CONTAINER_METADATA_FILE")
+		metadataFile, err := ioutil.ReadFile(metadataFilePath)
+		if err != nil {
+			log.Errorf("Unable to open ECS metadata file: %v\n", err)
+		} else {
+			if err := json.Unmarshal(metadataFile, &dat); err != nil {
+				log.Errorf("Unable to read ECS metadatafile contents: %v", err)
+			} else {
+				taskArn := strings.Split(dat["TaskARN"].(string), ":")
+				region = taskArn[3]
+				log.Debugf("Fetch region %v from ECS metadata file", region)
+			}
+		}
+	}
+	return region
 }
 
 // GetAWSConfigSession returns AWS config and session instances.
