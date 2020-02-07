@@ -195,6 +195,7 @@ func TestValidECSRegion(t *testing.T) {
 
 	assert.EqualValues(t, testString, "us-east-1")
 	clearTestFile()
+	os.Clearenv()
 }
 
 // getRegionFromECSMetadata() returns an empty string if ECS metadata related env is not set
