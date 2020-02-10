@@ -146,16 +146,19 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 		awsRegion = region
 		log.Debugf("Fetch region %v from commandline/config file", awsRegion)
 	} else if !noMetadata {
-		es := getDefaultSession()
-		awsRegion, err = cn.getEC2Region(es)
-		if err != nil {
-			awsRegion = getRegionFromECSMetadata()
-		} else {
-			log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
+		awsRegion = getRegionFromECSMetadata()
+		if awsRegion == "" {
+			es := getDefaultSession()
+			awsRegion, err = cn.getEC2Region(es)
+			if err != nil {
+				log.Errorf("Unable to fetch region from EC2 metadata: %v\n", err)
+			} else {
+				log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
+			}
 		}
 	}
 	if awsRegion == "" {
-		log.Error("Cannot fetch region variable from config file, environment variables, ec2 metadata, and ecs metadata.")
+		log.Errorf("Cannot fetch region variable from config file, environment variables, ecs metadata, or ec2 metadata.")
 		os.Exit(1)
 	}
 	s = cn.newAWSSession(roleArn, awsRegion)
