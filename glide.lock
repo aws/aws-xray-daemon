@@ -1,8 +1,8 @@
-hash: 5e6315cb47f0838c1961f08c20e689a5dc5058a476047c430b9e25e59a3b5446
-updated: 2019-11-26T16:32:54.654152225Z
+hash: 0c0e0870c374034809ce641b62bae19bea17bd72e0483736d098a758aa952cee
+updated: 2020-02-18T18:18:05.42344-08:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: da1bcf347b8a39f8222e2799f772112761b6f25c
+  version: "ea1cac89876be0ae7f457c0756856cbe8636ab32"
   subpackages:
   - aws
   - aws/awserr
@@ -22,12 +22,15 @@ imports:
   - aws/request
   - aws/session
   - aws/signer/v4
+  - internal/context
   - internal/ini
   - internal/sdkio
   - internal/sdkmath
   - internal/sdkrand
   - internal/sdkuri
   - internal/shareddefaults
+  - internal/strings
+  - internal/sync/singleflight
   - private/protocol
   - private/protocol/json/jsonutil
   - private/protocol/jsonrpc
@@ -39,6 +42,25 @@ imports:
   - service/sts
   - service/sts/stsiface
   - service/xray
+- name: github.com/aws/aws-xray-daemon
+  version: c330123af83631d4e6a789fcf5c5480ebd9218ad
+  subpackages:
+  - daemon/bufferpool
+  - daemon/cfg
+  - daemon/cli
+  - daemon/conn
+  - daemon/logger
+  - daemon/processor
+  - daemon/profiler
+  - daemon/proxy
+  - daemon/ringbuffer
+  - daemon/socketconn
+  - daemon/socketconn/udp
+  - daemon/telemetry
+  - daemon/tracesegment
+  - daemon/util
+  - daemon/util/test
+  - daemon/util/timer
 - name: github.com/cihub/seelog
   version: f561c5e57575bb1e0a2167028b7339b3a8d16fb4
   subpackages:
