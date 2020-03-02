@@ -30,10 +30,31 @@ import (
 )
 
 var ec2Region = "us-east-1"
+var tstFileName = "test_config.json"
+var tstFilePath string
 
 type mockConn struct {
 	mock.Mock
 	sn *session.Session
+}
+
+func setupTestFile(cnfg string) (string, error) {
+	goPath := os.Getenv("PWD")
+	if goPath == "" {
+		panic("GOPATH not set")
+	}
+	tstFilePath = goPath + "/" + tstFileName
+	f, err := os.Create(tstFilePath)
+	if err != nil {
+		panic(err)
+	}
+	f.WriteString(cnfg)
+	f.Close()
+	return goPath, err
+}
+
+func clearTestFile() {
+	os.Remove(tstFilePath)
 }
 
 func (c *mockConn) getEC2Region(s *session.Session) (string, error) {
@@ -128,6 +149,97 @@ func TestNoRegion(t *testing.T) {
 	if e, ok := error.(*exec.ExitError); !ok || e.Success() {
 		t.Fatalf("Process ran with err %v, want exit status 1", error)
 	}
+}
+
+// getRegionFromECSMetadata() returns a valid region from an appropriate JSON file
+func TestValidECSRegion(t *testing.T) {
+	metadataFile :=
+		`{
+    "Cluster": "default",
+    "ContainerInstanceARN": "arn:aws:ecs:us-east-1:012345678910:container-instance/default/1f73d099-b914-411c-a9ff-81633b7741dd",
+    "TaskARN": "arn:aws:ecs:us-east-1:012345678910:task/default/2b88376d-aba3-4950-9ddf-bcb0f388a40c",
+    "TaskDefinitionFamily": "console-sample-app-static",
+    "TaskDefinitionRevision": "1",
+    "ContainerID": "aec2557997f4eed9b280c2efd7afccdcedfda4ac399f7480cae870cfc7e163fd",
+    "ContainerName": "simple-app",
+    "DockerContainerName": "/ecs-console-sample-app-static-1-simple-app-e4e8e495e8baa5de1a00",
+    "ImageID": "sha256:2ae34abc2ed0a22e280d17e13f9c01aaf725688b09b7a1525d1a2750e2c0d1de",
+    "ImageName": "httpd:2.4",
+    "PortMappings": [
+        {
+            "ContainerPort": 80,
+            "HostPort": 80,
+            "BindIp": "0.0.0.0",
+            "Protocol": "tcp"
+        }
+    ],
+    "Networks": [
+        {
+            "NetworkMode": "bridge",
+            "IPv4Addresses": [
+                "192.0.2.0"
+            ]
+        }
+    ],
+    "MetadataFileStatus": "READY",
+    "AvailabilityZone": "us-east-1b",
+    "HostPrivateIPv4Address": "192.0.2.0",
+    "HostPublicIPv4Address": "203.0.113.0"
+}`
+	setupTestFile(metadataFile)
+	env := stashEnv()
+	defer popEnv(env)
+	os.Setenv("ECS_ENABLE_CONTAINER_METADATA", "true")
+	os.Setenv("ECS_CONTAINER_METADATA_FILE", tstFilePath)
+	testString := getRegionFromECSMetadata()
+
+	assert.EqualValues(t, "us-east-1", testString)
+	clearTestFile()
+	os.Clearenv()
+}
+
+// getRegionFromECSMetadata() returns an empty string if ECS metadata related env is not set
+func TestNoECSMetadata(t *testing.T){
+	env := stashEnv()
+	defer popEnv(env)
+	testString := getRegionFromECSMetadata()
+
+	assert.EqualValues(t, "", testString)
+}
+// getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be parsed as valid JSON
+func TestInvalidECSMetadata(t *testing.T){
+	metadataFile := "][foobar})("
+	setupTestFile(metadataFile)
+	env := stashEnv()
+	defer popEnv(env)
+	os.Setenv("ECS_ENABLE_CONTAINER_METADATA", "true")
+	os.Setenv("ECS_CONTAINER_METADATA_FILE", tstFilePath)
+	log := test.LogSetup()
+
+	testString := getRegionFromECSMetadata()
+
+	assert.EqualValues(t, "", testString)
+	assert.True(t, strings.Contains(log.Logs[0], "Unable to read"))
+
+	clearTestFile()
+}
+
+// getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be opened
+func TestMissingECSMetadataFile(t *testing.T){
+	metadataFile := "foobar"
+	setupTestFile(metadataFile)
+	env := stashEnv()
+	defer popEnv(env)
+	clearTestFile()
+
+	os.Setenv("ECS_ENABLE_CONTAINER_METADATA", "true")
+	os.Setenv("ECS_CONTAINER_METADATA_FILE", metadataFile)
+	log := test.LogSetup()
+
+	testString := getRegionFromECSMetadata()
+
+	assert.EqualValues(t, "", testString)
+	assert.True(t, strings.Contains(log.Logs[0], "Unable to open"))
 }
 
 // getEC2Region() returns nil region and error, resulting in exiting the process
