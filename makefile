@@ -1,6 +1,4 @@
-SDK_BASE_FOLDERS=$(shell ls -d daemon/ | grep -v vendor)
-DAEMON_ONLY_PKGS=$(shell go list ./... | grep -v "/vendor/")
-GO_VET_CMD=go tool vet --all -shadow
+GO_VET_CMD=go vet --all
 PREFIX :=.
 
 # Initialize workspace if it's empty
@@ -11,13 +9,6 @@ endif
 # Initialize BGO_SPACE
 export BGO_SPACE=$(shell pwd)
 path := $(BGO_SPACE):$(WORKSPACE)
-ifneq ($(GOPATH),)
-	GOPATH := $(path):$(GOPATH):$(BGO_SPACE)
-else
-	GOPATH := $(path):$(BGO_SPACE)
-endif
-
-export GOPATH
 
 build: pre-build create-folder copy-file build-mac build-linux build-windows zip-linux zip-osx zip-win
 
@@ -35,24 +26,32 @@ create-folder:
 
 .PHONY: copy-file
 copy-file:
-	cp daemon/cfg.yaml build/xray/
+	cp pkg/cfg.yaml build/xray/
 	cp $(BGO_SPACE)/VERSION	build/xray/
 
 .PHONY: build-mac
 build-mac:
 	@echo "Build for MAC amd64"
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray_mac ${PREFIX}/daemon/daemon.go ${PREFIX}/daemon/tracing.go
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray_mac ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
 
 .PHONY: build-linux
 build-linux:
 	@echo "Build for Linux amd64"
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray ${PREFIX}/daemon/daemon.go ${PREFIX}/daemon/tracing.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
 
 .PHONY: build-windows
 build-windows:
 	@echo "Build for Windows amd64"
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray.exe ${PREFIX}/daemon/daemon.go ${PREFIX}/daemon/tracing_windows.go
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray_windows.exe ${PREFIX}/daemon/daemon.go ${PREFIX}/daemon/tracing.go
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing_windows.go
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray_windows.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+
+.PHONY: build-docker
+build-docker:
+	docker build -t amazon/aws-xray-daemon:$(shell cat VERSION) .
+
+.PHONY: push-docker
+push-docker:
+	docker push amazon/aws-xray-daemon:$(shell cat VERSION)
 
 .PHONY: zip-linux
 zip-linux:
@@ -77,16 +76,16 @@ package-rpm:
 .PHONY: test
 test:
 	@echo "Testing daemon"
-	go test -cover ${DAEMON_ONLY_PKGS}
+	go test -cover ./...
 
 vet:
-	${GO_VET_CMD} ${SDK_BASE_FOLDERS}
+	${GO_VET_CMD} ./...
 
 lint:
 	golint ${SDK_BASE_FOLDERS}...
 
 fmt:
-	go fmt daemon/...
+	go fmt pkg/...
 
 .PHONY: clean-folder
 clean-folder:
