@@ -1,4 +1,3 @@
-GO_VET_CMD=go vet --all
 PREFIX :=.
 
 # Initialize workspace if it's empty
@@ -79,7 +78,7 @@ test:
 	go test -cover ./...
 
 vet:
-	${GO_VET_CMD} ./...
+	go vet ./...
 
 lint:
 	golint ${SDK_BASE_FOLDERS}...

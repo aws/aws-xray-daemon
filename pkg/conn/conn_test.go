@@ -305,7 +305,7 @@ func TestLoadEnvConfigCreds(t *testing.T) {
 	assert.Equal(t, "", valueA.AccessKeyID, "Expect the value to be empty")
 	assert.Equal(t, "", valueA.SecretAccessKey, "Expect the value to be empty")
 	assert.Equal(t, "", valueA.SessionToken, "Expect the value to be empty")
-	assert.Equal(t, "AssumeRoleProvider", valueA.ProviderName, "Expect the value to be empty")
+	assert.Equal(t, "AssumeRoleProvider", valueA.ProviderName, "Expect the value to be AssumeRoleProvider")
 }
 
 func TestGetProxyUrlProxyAddressNotValid(t *testing.T) {
