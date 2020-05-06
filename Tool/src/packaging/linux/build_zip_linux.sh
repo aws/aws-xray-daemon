@@ -10,4 +10,4 @@ then
     rm ${BUILD_FOLDER}/xray-linux.zip
 fi
 cd ${BUILD_FOLDER}
-zip aws-xray-daemon-linux-`cat ${BGO_SPACE}/VERSION`.zip xray cfg.yaml
+zip aws-xray-daemon-linux-`cat ${BGO_SPACE}/VERSION`.zip xray cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt

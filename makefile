@@ -27,6 +27,8 @@ create-folder:
 copy-file:
 	cp pkg/cfg.yaml build/xray/
 	cp $(BGO_SPACE)/VERSION	build/xray/
+	cp $(BGO_SPACE)/LICENSE build/xray
+	cp $(BGO_SPACE)/THIRD-PARTY-LICENSES.txt build/xray
 
 .PHONY: build-mac
 build-mac:

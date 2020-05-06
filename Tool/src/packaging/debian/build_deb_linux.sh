@@ -37,6 +37,11 @@ cat ${BGO_SPACE}/VERSION | tr -d "\n" >> ${BGO_SPACE}/bin/debian_amd64/debian/co
 echo '-1' >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 cat ${BGO_SPACE}/Tool/src/packaging/debian/control >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 
+echo "Constructing the copyright file"
+cat ${BGO_SPACE}/LICENSE >> ${BGO_SPACE}/bin/debian_amd64/debian/copyright
+echo '\n ======================== \n' >> ${BGO_SPACE}/bin/debian_amd64/debian/copyright
+cat ${BGO_SPACE}/THIRD-PARTY-LICENSES.txt >> ${BGO_SPACE}/bin/debian_amd64/debian/copyright
+
 echo "Constructing the changelog file"
 
 echo -n 'xray (' > ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/changelog
@@ -62,7 +67,7 @@ rm ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/changelog.Debian
 echo "Creating tar"
 # the below permission is required by debian
 cd ${BGO_SPACE}/bin/debian_amd64/debian/; tar czf data.tar.gz usr etc lib --owner=0 --group=0 ; cd ~-
-cd ${BGO_SPACE}/bin/debian_amd64/debian/; tar czf control.tar.gz control conffiles preinst postinst prerm --owner=0 --group=0 ; cd ~-
+cd ${BGO_SPACE}/bin/debian_amd64/debian/; tar czf control.tar.gz control conffiles preinst postinst prerm copyright --owner=0 --group=0 ; cd ~-
 
 echo "Constructing the deb package"
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/debian-binary

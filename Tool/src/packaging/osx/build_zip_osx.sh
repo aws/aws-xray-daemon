@@ -10,4 +10,4 @@ then
     rm ${BUILD_FOLDER}/xray-osx.zip
 fi
 cd ${BUILD_FOLDER}
-zip aws-xray-daemon-macos-`cat ${BGO_SPACE}/VERSION`.zip xray_mac cfg.yaml
+zip aws-xray-daemon-macos-`cat ${BGO_SPACE}/VERSION`.zip xray_mac cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt
