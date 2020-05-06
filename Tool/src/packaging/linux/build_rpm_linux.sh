@@ -14,9 +14,11 @@ mkdir -p ${BGO_SPACE}/bin/linux_amd64/linux/etc/systemd/system/
 
 echo "Copying application files"
 cp ${BGO_SPACE}/build/xray/xray ${BGO_SPACE}/bin/linux_amd64/linux/usr/bin/
-cp ${BGO_SPACE}/daemon/cfg.yaml ${BGO_SPACE}/bin/linux_amd64/linux/etc/amazon/xray/cfg.yaml
+cp ${BGO_SPACE}/pkg/cfg.yaml ${BGO_SPACE}/bin/linux_amd64/linux/etc/amazon/xray/cfg.yaml
 cp ${BGO_SPACE}/Tool/src/packaging/linux/xray.conf ${BGO_SPACE}/bin/linux_amd64/linux/etc/init/
 cp ${BGO_SPACE}/Tool/src/packaging/linux/xray.service ${BGO_SPACE}/bin/linux_amd64/linux/etc/systemd/system/
+cp ${BGO_SPACE}/LICENSE ${BGO_SPACE}/bin/linux_amd64/linux/etc/amazon/xray/
+cp ${BGO_SPACE}/THIRD-PARTY-LICENSES.txt ${BGO_SPACE}/bin/linux_amd64/linux/etc/amazon/xray/
 
 echo "Creating the rpm package"
 SPEC_FILE="${BGO_SPACE}/Tool/src/packaging/linux/xray.spec"

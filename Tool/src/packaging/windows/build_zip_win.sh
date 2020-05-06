@@ -18,5 +18,5 @@ then
 fi
 
 cd ${BUILD_FOLDER}
-zip aws-xray-daemon-windows-service-`cat ${BGO_SPACE}/VERSION`.zip xray.exe cfg.yaml
-zip aws-xray-daemon-windows-process-`cat ${BGO_SPACE}/VERSION`.zip xray_windows.exe cfg.yaml
+zip aws-xray-daemon-windows-service-`cat ${BGO_SPACE}/VERSION`.zip xray.exe cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt
+zip aws-xray-daemon-windows-process-`cat ${BGO_SPACE}/VERSION`.zip xray_windows.exe cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt

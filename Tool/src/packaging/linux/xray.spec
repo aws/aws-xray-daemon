@@ -13,6 +13,9 @@ This package provides daemon to send trace segments to xray dataplane
 %files
 /usr/bin/xray
 
+%%license /etc/amazon/xray/LICENSE
+%%license /etc/amazon/xray/THIRD-PARTY-LICENSES.txt
+
 %config(noreplace) /etc/amazon/xray/cfg.yaml
 %config(noreplace) /etc/init/xray.conf
 %config(noreplace) /etc/systemd/system/xray.service
