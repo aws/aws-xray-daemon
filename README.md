@@ -35,12 +35,6 @@ Install the daemon using the following command:
 go get -u github.com/aws/aws-xray-daemon/...  
 ```  
 
-You can also use [Glide](https://github.com/Masterminds/glide) to manage dependencies by using:   
-
-```  
-glide install  
-```  
-
 ## Credential Configuration
 
 The AWS X-Ray Daemon follows default credential resolution for the [aws-sdk-go](https://docs.aws.amazon.com/sdk-for-go/api/index.html).
