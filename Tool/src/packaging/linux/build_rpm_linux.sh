@@ -14,7 +14,7 @@ mkdir -p ${BGO_SPACE}/bin/linux_amd64/linux/etc/systemd/system/
 
 echo "Copying application files"
 cp ${BGO_SPACE}/build/xray/xray ${BGO_SPACE}/bin/linux_amd64/linux/usr/bin/
-cp ${BGO_SPACE}/daemon/cfg.yaml ${BGO_SPACE}/bin/linux_amd64/linux/etc/amazon/xray/cfg.yaml
+cp ${BGO_SPACE}/pkg/cfg.yaml ${BGO_SPACE}/bin/linux_amd64/linux/etc/amazon/xray/cfg.yaml
 cp ${BGO_SPACE}/Tool/src/packaging/linux/xray.conf ${BGO_SPACE}/bin/linux_amd64/linux/etc/init/
 cp ${BGO_SPACE}/Tool/src/packaging/linux/xray.service ${BGO_SPACE}/bin/linux_amd64/linux/etc/systemd/system/
 
