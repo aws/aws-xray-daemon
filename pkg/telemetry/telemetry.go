@@ -10,6 +10,7 @@
 package telemetry
 
 import (
+	"os"
 	"sync/atomic"
 	"time"
 	"unsafe"
@@ -164,8 +165,17 @@ func newT(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetad
 	timer := &timer.Client{}
 	hostname := ""
 	instanceID := ""
+
+	var metadataClient *ec2metadata.EC2Metadata
 	if !noMetadata {
-		metadataClient := ec2metadata.New(s)
+		metadataClient = ec2metadata.New(s)
+	}
+
+	hostnameEnv := os.Getenv("AWS_HOSTNAME")
+	if hostnameEnv != "" {
+		hostname = hostnameEnv
+		log.Debugf("Fetch hostname %v from environment variables", hostnameEnv)
+	} else if metadataClient != nil {
 		hn, err := metadataClient.GetMetadata("hostname")
 		if err != nil {
 			log.Debugf("Get hostname metadata failed: %s", err)
@@ -173,6 +183,15 @@ func newT(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetad
 			hostname = hn
 			log.Debugf("Using %v hostname for telemetry records", hostname)
 		}
+	} else {
+		log.Debug("No hostname set for telemetry records")
+	}
+
+	instanceIDEnv := os.Getenv("AWS_INSTANCE_ID")
+	if instanceIDEnv != "" {
+		instanceID = instanceIDEnv
+		log.Debugf("Fetch instance ID %v from environment variables", instanceIDEnv)
+	} else if metadataClient != nil {
 		instID, err := metadataClient.GetMetadata("instance-id")
 		if err != nil {
 			log.Errorf("Get instance id metadata failed: %s", err)
@@ -181,7 +200,7 @@ func newT(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetad
 			log.Debugf("Using %v Instance Id for Telemetry records", instanceID)
 		}
 	} else {
-		log.Debug("No Metadata set for telemetry records")
+		log.Debug("No Instance Id set for telemetry records")
 	}
 	record := getEmptyTelemetryRecord()
 	t := &Telemetry{
