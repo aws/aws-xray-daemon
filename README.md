@@ -72,7 +72,12 @@ Usage: X-Ray [options]
 
 ### Windows  
 
-`make build-windows` would build binaries and .zip files in `/build` folder for the Windows platform.  
+`make build-windows` would build binaries and .zip files in `/build` folder for the Windows platform. 
+
+## Build with ARM
+GOARCH=arm64 would build daemon for arm architecture. Instruction to build daemon on linux OS for arm64 architecture, the build instruction would look something like this. Similarly, by changing GOARCH=arm64 and GOOS=darwin or windows should be able to build daemon on macos or windows respectively.
+
+`GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o build/xray/xray cmd/tracing/daemon.go cmd/tracing/tracing.go`
 
 ## Testing  
 
