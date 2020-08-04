@@ -93,9 +93,9 @@ func (s *segmentsBatch) poll() {
 			for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 				telemetry.T.SegmentRejected(1)
 				log.Errorf("Unprocessed segment: %v", unprocessedSegment)
-				log.Warn("Batch that contains unprocessed segments")
+				log.Debug("Batch that contains unprocessed segments")
 				for i := 0; i < len(batch); i++ {
-					log.Warn(*batch[i])
+					log.Debug(*batch[i])
 				}
 			}
 		} else {
