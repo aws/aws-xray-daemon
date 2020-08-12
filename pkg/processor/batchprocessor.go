@@ -89,14 +89,20 @@ func (s *segmentsBatch) poll() {
 				telemetry.T.SegmentSent(int64(len(batch)))
 			}
 			elapsed := time.Since(start)
-			log.Infof("Successfully sent batch of %d segments (%1.3f seconds)", len(batch), elapsed.Seconds())
-			for _, unprocessedSegment := range r.UnprocessedTraceSegments {
-				telemetry.T.SegmentRejected(1)
-				log.Errorf("Unprocessed segment: %v", unprocessedSegment)
-				log.Debug("Batch that contains unprocessed segments")
-				for i := 0; i < len(batch); i++ {
-					log.Debug(*batch[i])
+
+			if len(r.UnprocessedTraceSegments) != 0 {
+				log.Infof("Sent batch of %d segments but had %d Unprocessed segments (%1.3f seconds)", len(batch),
+					len(r.UnprocessedTraceSegments), elapsed.Seconds())
+				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
+					telemetry.T.SegmentRejected(1)
+					log.Errorf("Unprocessed segment: %v", unprocessedSegment)
+					log.Debug("Batch that contains unprocessed segments")
+					for i := 0; i < len(batch); i++ {
+						log.Debug(*batch[i])
+					}
 				}
+			} else {
+				log.Infof("Successfully sent batch of %d segments (%1.3f seconds)", len(batch), elapsed.Seconds())
 			}
 		} else {
 			log.Debug("Segment batch: done!")
