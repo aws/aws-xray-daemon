@@ -80,7 +80,7 @@ func (r *RingBuffer) Send(s *tracesegment.TraceSegment) {
 			log.Warn("Segment buffer is full. Dropping oldest segment document.")
 			telemetry.T.SegmentSpillover(1)
 		default:
-			log.Debug("Buffers: channel was de-queued")
+			log.Trace("Buffers: channel was de-queued")
 		}
 		r.Send(s)
 	}
