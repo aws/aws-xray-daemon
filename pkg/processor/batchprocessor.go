@@ -12,6 +12,7 @@ package processor
 import (
 	"math"
 	"math/rand"
+	"strings"
 	"time"
 	"github.com/aws/aws-xray-daemon/pkg/conn"
 	"github.com/aws/aws-xray-daemon/pkg/telemetry"
@@ -96,10 +97,11 @@ func (s *segmentsBatch) poll() {
 				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 					telemetry.T.SegmentRejected(1)
 					log.Errorf("Unprocessed segment: %v", unprocessedSegment)
-				}
-				log.Debug("Batch that contains unprocessed segments")
-				for i := 0; i < len(batch); i++ {
-					log.Debug(*batch[i])
+					for i := 0; i < len(batch); i++ {
+						if strings.Contains(*batch[i], "\"id\":\"" + *unprocessedSegment.Id) {
+							log.Debug(*batch[i])
+						}
+					}
 				}
 			} else {
 				log.Infof("Successfully sent batch of %d segments (%1.3f seconds)", len(batch), elapsed.Seconds())
