@@ -300,7 +300,7 @@ func TestPoolSendReturnUnprocessed(t *testing.T) {
 		xRay:    xRay,
 		done:    make(chan bool),
 	}
-	testMessage := "Test Message"
+	testMessage := "{\"id\":\"9472\""
 	batch := []*string{&testMessage}
 	s.send(batch)
 

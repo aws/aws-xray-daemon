@@ -10,13 +10,13 @@
 package processor
 
 import (
-	"math"
-	"math/rand"
-	"strings"
-	"time"
 	"github.com/aws/aws-xray-daemon/pkg/conn"
 	"github.com/aws/aws-xray-daemon/pkg/telemetry"
 	"github.com/aws/aws-xray-daemon/pkg/util/timer"
+	"math"
+	"math/rand"
+	"regexp"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/xray"
 	log "github.com/cihub/seelog"
@@ -91,23 +91,30 @@ func (s *segmentsBatch) poll() {
 			}
 			elapsed := time.Since(start)
 
+			batchesMap := make(map[string]string)
+			idRegexp := regexp.MustCompile(`\"id\":\"(.*?)\"`)
+			for i := 0; i < len(batch); i++ {
+				idStrs := idRegexp.FindStringSubmatch(*batch[i])
+				if len(idStrs) != 2 {
+					log.Debugf("Failed to match \"id\" in segment: ", *batch[i])
+					continue
+				}
+				batchesMap[idStrs[1]] = *batch[i]
+			}
+
 			if len(r.UnprocessedTraceSegments) != 0 {
 				log.Infof("Sent batch of %d segments but had %d Unprocessed segments (%1.3f seconds)", len(batch),
 					len(r.UnprocessedTraceSegments), elapsed.Seconds())
 				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 					telemetry.T.SegmentRejected(1)
 					log.Errorf("Unprocessed segment: %v", unprocessedSegment)
-					for i := 0; i < len(batch); i++ {
-						if strings.Contains(*batch[i], "\"id\":\"" + *unprocessedSegment.Id) {
-							log.Debug(*batch[i])
-						}
-					}
+					log.Debugf(batchesMap[*unprocessedSegment.Id])
 				}
 			} else {
 				log.Infof("Successfully sent batch of %d segments (%1.3f seconds)", len(batch), elapsed.Seconds())
 			}
 		} else {
-			log.Debug("Segment batch: done!")
+			log.Trace("Segment batch: done!")
 			s.done <- true
 			break
 		}
