@@ -74,10 +74,12 @@ Usage: X-Ray [options]
 
 `make build-windows` would build binaries and .zip files in `/build` folder for the Windows platform. 
 
-## Build with ARM
-GOARCH=arm64 would build daemon for arm architecture. Instruction to build daemon on linux OS for arm64 architecture, the build instruction would look something like this. Similarly, by changing GOARCH=arm64 and GOOS=darwin or windows should be able to build daemon on macos or windows respectively.
-
-`GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o build/xray/xray cmd/tracing/daemon.go cmd/tracing/tracing.go`
+## Build for ARM achitecture
+Currently, the `make build` script builds artifacts for AMD architecture. You can build the X-Ray Daemon for ARM by using the `go build` command and setting the `GOARCH` to `arm64`. To build the daemon binary on a linux ARM machine, you can use the following command:
+```
+GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o xray cmd/tracing/daemon.go cmd/tracing/tracing.go
+```
+As of Aug 31, 2020, windows and darwin builds for ARM64 are not supported by `go build`.
 
 ## Testing  
 
