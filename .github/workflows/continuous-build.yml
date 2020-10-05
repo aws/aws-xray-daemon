@@ -33,9 +33,9 @@ jobs:
       - name: Run tests
         run: go test -cover ./...
       - name: Build daemon
-        run: go build ./cmd/tracing/daemon.go ./cmd/tracing/tracing.go
+        run: go build ./cmd/tracing
   build_docker:
-    name: Build for ${{ matrix.os }}
+    name: Build Docker image
     needs: build
     runs-on: ubuntu-latest
     steps:
