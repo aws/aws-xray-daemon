@@ -41,6 +41,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
+      - name: Login to DockerHub
+        if: ${{ github.event_name == 'push' }}
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -55,7 +61,7 @@ jobs:
       - name: Build docker image
         uses: docker/build-push-action@v2
         with:
-          push: false
+          push: ${{ github.event_name == 'push' }}
           platforms: linux/amd64,linux/arm64
           tags: amazon/aws-xray-daemon:alpha
           cache-from: type=local,src=/tmp/.buildx-cache
