@@ -56,6 +56,7 @@ var socketConnection string
 var cpuProfile string
 var memProfile string
 var roleArn string
+var profile string
 var receiveBufferSize int
 var daemonProcessBufferMemoryMB int
 var logFile string
@@ -121,6 +122,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 		defaultUDPAddress                = cnfg.Socket.UDPAddress
 		defaultTCPAddress                = cnfg.Socket.TCPAddress
 		defaultRoleARN                   = cnfg.RoleARN
+		defaultProfile                   = cnfg.Profile
 		defaultLocalMode                 = cnfg.LocalMode
 		defaultRegion                    = cnfg.Region
 		defaultResourceARN               = cnfg.ResourceARN
@@ -135,6 +137,7 @@ func initCli(configFile string) (*cli.Flag, *cfg.Config) {
 	flag.StringVarF(&udpAddress, "bind", "b", defaultUDPAddress, "Overrides default UDP address (127.0.0.1:2000).")
 	flag.StringVarF(&tcpAddress, "bind-tcp", "t", defaultTCPAddress, "Overrides default TCP address (127.0.0.1:2000).")
 	flag.StringVarF(&roleArn, "role-arn", "r", defaultRoleARN, "Assume the specified IAM role to upload segments to a different account.")
+	flag.StringVarF(&profile, "profile", "s", defaultProfile, "Use the credentials associated with the specified profile.")
 	flag.StringVarF(&configFilePath, "config", "c", "", "Load a configuration file from the specified path.")
 	flag.StringVarF(&logFile, "log-file", "f", defaultLogPath, "Output logs to the specified file path.")
 	flag.StringVarF(&logLevel, "log-level", "l", defaultLogLevel, "Log level, from most verbose to least: dev, debug, info, warn, error, prod (default).")
@@ -192,7 +195,7 @@ func initDaemon(config *cfg.Config) *Daemon {
 	if config.Endpoint != "" {
 		log.Debugf("Using Endpoint read from Config file: %s", config.Endpoint)
 	}
-	awsConfig, session := conn.GetAWSConfigSession(&conn.Conn{}, config, roleArn, regionFlag, noMetadata)
+	awsConfig, session := conn.GetAWSConfigSession(&conn.Conn{}, config, roleArn, profile, regionFlag, noMetadata)
 	log.Infof("Using region: %v", aws.StringValue(awsConfig.Region))
 
 	log.Debugf("ARN of the AWS resource running the daemon: %v", resourceARN)
