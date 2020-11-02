@@ -23,8 +23,6 @@ LocalMode: false
 ResourceARN: ""
 # Assume an IAM role to upload segments to a different account.
 RoleARN: ""
-# Use the profile credentials from credentials file
-Profile: ""
 # Disable TLS certificate verification.
 NoVerifySSL: false
 # Upload segments to AWS X-Ray through a proxy.

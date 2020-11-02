@@ -606,7 +606,7 @@ Version: 2`
 }
 
 func TestValidConfigArray(t *testing.T) {
-	validString := []string{"TotalBufferSizeMB", "Concurrency", "Endpoint", "Region", "Socket.UDPAddress", "Socket.TCPAddress", "ProxyServer.IdleConnTimeout", "ProxyServer.MaxIdleConnsPerHost", "ProxyServer.MaxIdleConns", "Logging.LogRotation", "Logging.LogLevel", "Logging.LogPath", "LocalMode", "ResourceARN", "RoleARN", "Profile", "NoVerifySSL", "ProxyAddress", "Version"}
+	validString := []string{"TotalBufferSizeMB", "Concurrency", "Endpoint", "Region", "Socket.UDPAddress", "Socket.TCPAddress", "ProxyServer.IdleConnTimeout", "ProxyServer.MaxIdleConnsPerHost", "ProxyServer.MaxIdleConns", "Logging.LogRotation", "Logging.LogLevel", "Logging.LogPath", "LocalMode", "ResourceARN", "RoleARN", "NoVerifySSL", "ProxyAddress", "Version"}
 	testString := validConfigArray()
 	if len(validString) != len(testString) {
 		t.Fatalf("Unexpect test array length. Got %v but should be %v", len(testString), len(validString))

@@ -11,13 +11,13 @@ package conn
 
 import (
 	"crypto/tls"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
+	"encoding/json"
+	"io/ioutil"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -34,7 +34,7 @@ import (
 )
 
 type connAttr interface {
-	newAWSSession(roleArn string, profile string, region string) *session.Session
+	newAWSSession(roleArn string, region string) *session.Session
 	getEC2Region(s *session.Session) (string, error)
 }
 
@@ -133,7 +133,7 @@ func getRegionFromECSMetadata() string {
 }
 
 // GetAWSConfigSession returns AWS config and session instances.
-func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, profile string, region string, noMetadata bool) (*aws.Config, *session.Session) {
+func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region string, noMetadata bool) (*aws.Config, *session.Session) {
 	var s *session.Session
 	var err error
 	var awsRegion string
@@ -161,7 +161,7 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, profile str
 		log.Errorf("Cannot fetch region variable from config file, environment variables, ecs metadata, or ec2 metadata.")
 		os.Exit(1)
 	}
-	s = cn.newAWSSession(roleArn, profile, awsRegion)
+	s = cn.newAWSSession(roleArn, awsRegion)
 
 	config := &aws.Config{
 		Region:                 aws.String(awsRegion),
@@ -202,17 +202,11 @@ func ProxyServerTransport(config *cfg.Config) *http.Transport {
 	return transport
 }
 
-func (c *Conn) newAWSSession(roleArn string, profile string, region string) *session.Session {
+func (c *Conn) newAWSSession(roleArn string, region string) *session.Session {
 	var s *session.Session
 	var err error
 	if roleArn == "" {
-		if profile == "" {
-			s = getDefaultSession()
-		} else {
-			s, err = session.NewSession(&aws.Config{
-				Credentials: credentials.NewSharedCredentials("", profile),
-			})
-		}
+		s = getDefaultSession()
 	} else {
 		stsCreds := getSTSCreds(region, roleArn)
 

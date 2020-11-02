@@ -51,13 +51,12 @@ Usage: X-Ray [options]
 5. -b  --bind    Overrides default UDP address (127.0.0.1:2000).  
 6. -t  --bind-tcp	Overrides default TCP address (127.0.0.1:2000).  
 7. -r  --role-arn Assume the specified IAM role to upload segments to a different account.    
-8. -s  --profile Use the credentials associated with the specified profile.
-9. -c  --config   Load a configuration file from the specified path.    
-10. -f  --log-file Output logs to the specified file path.    
-11. -l  --log-level    Log level, from most verbose to least: dev, debug, info, warn, error, prod (default).    
-12. -p --proxy-address  Proxy address through which to upload segments.
-13. -v --version  Show AWS X-Ray daemon version.
-14. -h --help    Show this screen
+8. -c  --config   Load a configuration file from the specified path.    
+9. -f  --log-file Output logs to the specified file path.    
+10. -l  --log-level    Log level, from most verbose to least: dev, debug, info, warn, error, prod (default).    
+11. -p --proxy-address  Proxy address through which to upload segments.
+12. -v --version  Show AWS X-Ray daemon version.
+13. -h --help    Show this screen
 
 ## Build  
 
