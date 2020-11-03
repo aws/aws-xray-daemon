@@ -85,9 +85,6 @@ type Config struct {
 	// IAM role to upload segments to a different account.
 	RoleARN string `yaml:"RoleARN"`
 
-	// Profile name to use from the credentials file
-	Profile string `yaml:"Profile"`
-
 	// Enable or disable TLS certificate verification.
 	NoVerifySSL *bool `yaml:"NoVerifySSL"`
 
@@ -366,7 +363,6 @@ func merge(configFile string) *Config {
 	userConfig.TotalBufferSizeMB = getIntValue(userConfig.TotalBufferSizeMB, DefaultConfig().TotalBufferSizeMB)
 	userConfig.ResourceARN = getStringValue(userConfig.ResourceARN, DefaultConfig().ResourceARN)
 	userConfig.RoleARN = getStringValue(userConfig.RoleARN, DefaultConfig().RoleARN)
-	userConfig.Profile = getStringValue(userConfig.Profile, DefaultConfig().Profile)
 	userConfig.Concurrency = getIntValue(userConfig.Concurrency, DefaultConfig().Concurrency)
 	userConfig.Endpoint = getStringValue(userConfig.Endpoint, DefaultConfig().Endpoint)
 	userConfig.Region = getStringValue(userConfig.Region, DefaultConfig().Region)

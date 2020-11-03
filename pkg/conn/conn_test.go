@@ -68,7 +68,7 @@ func (c *mockConn) getEC2Region(s *session.Session) (string, error) {
 	return ec2Region, nil
 }
 
-func (c *mockConn) newAWSSession(roleArn string, profile string, region string) *session.Session {
+func (c *mockConn) newAWSSession(roleArn string, region string) *session.Session {
 	return c.sn
 }
 
@@ -79,10 +79,9 @@ func TestEC2Session(t *testing.T) {
 	m.On("getEC2Region", nil).Return("").Once()
 	var expectedSession *session.Session
 	roleARN := ""
-	profile := ""
 	expectedSession, _ = session.NewSession()
 	m.sn = expectedSession
-	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, profile, "", false)
+	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", false)
 	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
 	assert.Equal(t, *cfg.Region, ec2Region, "Region value fetched from ec2-metadata service")
 	fmt.Printf("Logs: %v", log.Logs)
@@ -100,10 +99,9 @@ func TestRegionEnv(t *testing.T) {
 	var m = &mockConn{}
 	var expectedSession *session.Session
 	roleARN := ""
-	profile := ""
 	expectedSession, _ = session.NewSession()
 	m.sn = expectedSession
-	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, profile, "", true)
+	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", true)
 	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
 	assert.Equal(t, *cfg.Region, region, "Region value fetched from environment")
 	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from environment variables", region)))
@@ -116,10 +114,9 @@ func TestRegionArgument(t *testing.T) {
 	var m = &mockConn{}
 	var expectedSession *session.Session
 	roleARN := ""
-	profile := ""
 	expectedSession, _ = session.NewSession()
 	m.sn = expectedSession
-	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, profile, region, true)
+	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, region, true)
 	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
 	assert.Equal(t, *cfg.Region, region, "Region value fetched from the environment")
 	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from commandline/config file", region)))
@@ -132,12 +129,11 @@ func TestNoRegion(t *testing.T) {
 	var m = &mockConn{}
 	var expectedSession *session.Session
 	roleARN := ""
-	profile := ""
 	expectedSession, _ = session.NewSession()
 	m.sn = expectedSession
 
 	if os.Getenv(envFlag) == "1" {
-		GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, profile, region, true) // exits because no region found
+		GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, region, true) // exits because no region found
 		return
 	}
 
@@ -203,16 +199,15 @@ func TestValidECSRegion(t *testing.T) {
 }
 
 // getRegionFromECSMetadata() returns an empty string if ECS metadata related env is not set
-func TestNoECSMetadata(t *testing.T) {
+func TestNoECSMetadata(t *testing.T){
 	env := stashEnv()
 	defer popEnv(env)
 	testString := getRegionFromECSMetadata()
 
 	assert.EqualValues(t, "", testString)
 }
-
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be parsed as valid JSON
-func TestInvalidECSMetadata(t *testing.T) {
+func TestInvalidECSMetadata(t *testing.T){
 	metadataFile := "][foobar})("
 	setupTestFile(metadataFile)
 	env := stashEnv()
@@ -230,7 +225,7 @@ func TestInvalidECSMetadata(t *testing.T) {
 }
 
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be opened
-func TestMissingECSMetadataFile(t *testing.T) {
+func TestMissingECSMetadataFile(t *testing.T){
 	metadataFile := "foobar"
 	setupTestFile(metadataFile)
 	env := stashEnv()
@@ -253,12 +248,11 @@ func TestErrEC2(t *testing.T) {
 	m.On("getEC2Region", nil).Return("Error").Once()
 	var expectedSession *session.Session
 	roleARN := ""
-	profile := ""
 	expectedSession, _ = session.NewSession()
 	m.sn = expectedSession
 	envFlag := "NO_REGION"
 	if os.Getenv(envFlag) == "1" {
-		GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, profile, "", false)
+		GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", false)
 		return
 	}
 
@@ -299,13 +293,13 @@ func TestLoadEnvConfigCreds(t *testing.T) {
 		os.Setenv(k, v)
 	}
 	c := &Conn{}
-	cfg := c.newAWSSession("", "", "")
+	cfg := c.newAWSSession("", "")
 	value, err := cfg.Config.Credentials.Get()
 
 	assert.Nil(t, err, "Expect no error")
 	assert.Equal(t, cases.Val, value, "Expect the credentials value to match")
 
-	cfgA := c.newAWSSession("ROLEARN", "", "TEST")
+	cfgA := c.newAWSSession("ROLEARN", "TEST")
 	valueA, _ := cfgA.Config.Credentials.Get()
 
 	assert.Equal(t, "", valueA.AccessKeyID, "Expect the value to be empty")
