@@ -73,8 +73,6 @@ jobs:
         with:
           push: ${{ github.event_name == 'push' }}
           platforms: linux/amd64,linux/arm64
-          tags: |
-#            amazon/aws-xray-daemon:alpha
-            ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
+          tags: ${{ steps.login-ecr.outputs.registry }}/amazon/aws-xray-daemon:alpha
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
