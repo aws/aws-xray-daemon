@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-      - daemon-ecr-publish
   pull_request:
     branches:
       - master
@@ -61,7 +60,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Login to DockerHub
-        if: false
+        if: ${{ github.event_name == 'push' }}
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}
@@ -87,7 +86,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: 869129000292.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-xray-daemon:alpha
+          tags: |
+            amazon/aws-xray-daemon:alpha
+            806205748342.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-xray-daemon:alpha
           push: ${{ github.event_name == 'push' }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
