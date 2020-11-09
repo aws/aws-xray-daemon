@@ -1,53 +1,20 @@
-name: Continuous Build
+name: Release build and publish
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The version to tag the release with, e.g., 1.2.0, 1.2.1-alpha.1
+        required: true
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '^1.15'
-
-      - uses: actions/cache@v2
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Run tests
-        run: go test -cover ./...
-
-      - name: Build daemon
-        run: go build ./cmd/tracing
   build_publish_daemon_image:
     name: Build and Publish X-Ray daemon docker image to docker hub and ECR
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
       - name: Configure AWS Credentials
-        if: ${{ github.event_name == 'push' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -55,12 +22,10 @@ jobs:
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
-        if: ${{ github.event_name == 'push' }}
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Login to DockerHub
-        if: ${{ github.event_name == 'push' }}
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}
@@ -87,8 +52,8 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           tags: |
-            amazon/aws-xray-daemon:alpha
-            806205748342.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-xray-daemon:alpha
-          push: ${{ github.event_name == 'push' }}
+            amazon/aws-xray-daemon:${{ github.event.inputs.version }}
+            806205748342.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-xray-daemon:${{ github.event.inputs.version }}
+          push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
