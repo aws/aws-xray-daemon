@@ -14,6 +14,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
+      - name: Install latest version of aws cli
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+          aws --version
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -22,8 +29,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        run: aws ecr-public get-login-password --region us-east-1 | docker login -u AWS --password-stdin public.ecr.aws
 
       - name: Login to DockerHub
         uses: docker/login-action@v1
@@ -53,7 +59,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             amazon/aws-xray-daemon:${{ github.event.inputs.version }}
-            806205748342.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-xray-daemon:${{ github.event.inputs.version }}
+            public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:${{ github.event.inputs.version }}
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
