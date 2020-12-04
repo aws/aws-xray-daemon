@@ -57,10 +57,7 @@ jobs:
 
       - name: Login to Amazon ECR
         if: ${{ github.event_name == 'push' }}
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-        with:
-          registries: public.ecr.aws/u5g3z6k3
+        run: aws ecr-public get-login-password --region us-east-1 | docker login -u AWS --password-stdin public.ecr.aws
 
 #      - name: Login to DockerHub
 #        if: ${{ github.event_name == 'push' }}
