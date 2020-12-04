@@ -89,9 +89,9 @@ jobs:
 
       - name: Build and publish
         run: |
-          docker buildx build --platform linux/amd64 --load .
+          docker buildx build --platform linux/amd64 --tag public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha --load .
           docker images
-#          docker push public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha
+          docker push public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha
 
 #      - name: Build docker image
 #        uses: docker/build-push-action@v2
