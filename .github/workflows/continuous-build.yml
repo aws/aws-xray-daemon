@@ -87,13 +87,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      - name: Build docker image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          tags: public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha
-          push: ${{ github.event_name == 'push' }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Build and publish
+        run: |
+          docker buildx build --platform linux/amd64 --load .
+          docker tag amazon/aws-xray-daemon public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha
+          docker push public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha
+
+#      - name: Build docker image
+#        uses: docker/build-push-action@v2
+#        with:
+#          context: .
+#          file: ./Dockerfile
+#          platforms: linux/amd64,linux/arm64
+#          tags: public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha
+#          push: ${{ github.event_name == 'push' }}
+#          cache-from: type=local,src=/tmp/.buildx-cache
+#          cache-to: type=local,dest=/tmp/.buildx-cache
