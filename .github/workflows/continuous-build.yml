@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - daemon-ecr-publish
   pull_request:
     branches:
       - master
@@ -59,12 +60,12 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Login to DockerHub
-        if: ${{ github.event_name == 'push' }}
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
+#      - name: Login to DockerHub
+#        if: ${{ github.event_name == 'push' }}
+#        uses: docker/login-action@v1
+#        with:
+#          username: ${{ secrets.DOCKER_USER }}
+#          password: ${{ secrets.DOCKER_PASS }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -86,9 +87,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: |
-            amazon/aws-xray-daemon:alpha
-            806205748342.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-xray-daemon:alpha
+          tags: public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:alpha
           push: ${{ github.event_name == 'push' }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
