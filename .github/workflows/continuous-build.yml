@@ -30,10 +30,8 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Run tests
-        run: go test -cover ./...
-      - name: Build daemon
-        run: go build ./cmd/tracing
+      - name: Build distributions and test
+        run: make release
   build_docker:
     name: Build Docker image
     needs: build

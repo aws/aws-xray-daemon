@@ -73,4 +73,4 @@ echo "Constructing the deb package"
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/debian-binary
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/control.tar.gz
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/data.tar.gz
-cp ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/dist/aws-xray-daemon-linux-amd64-`cat ${BGO_SPACE}/VERSION`.deb
+cp ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-amd64-`cat ${BGO_SPACE}/VERSION`.deb
