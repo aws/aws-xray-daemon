@@ -37,6 +37,11 @@ jobs:
       - name: Build linux archives
         if: ${{ runner.os == 'Linux' }}
         run: make packaging
+      - name: Upload archives as actions artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: distributions
+          path: build/dist/
 
   build_docker:
     name: Build Docker image
