@@ -30,8 +30,14 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Build distributions and test
-        run: make release
+      - name: Build archives and test
+        run: make build test
+        env:
+          VERSION: ${{ github.sha }}
+      - name: Build linux archives
+        if: ${{ runner.os == 'ubuntu-latest' }}
+        run: make packaging
+
   build_docker:
     name: Build Docker image
     needs: build
