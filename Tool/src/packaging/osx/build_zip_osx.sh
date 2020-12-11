@@ -6,4 +6,4 @@ echo "****************************************"
 DIST_FOLDER=${BGO_SPACE}/build/dist/
 cd $DIST_FOLDER
 
-zip aws-xray-daemon-macos-amd64-`cat ${BGO_SPACE}/VERSION`.zip ../xray-mac-amd64/xray cfg.yaml ../xray/LICENSE ../xray/THIRD-PARTY-LICENSES.txt
+zip aws-xray-daemon-macos-amd64-`cat ${BGO_SPACE}/VERSION`.zip ../xray-mac-amd64/xray ../xray/cfg.yaml ../xray/LICENSE ../xray/THIRD-PARTY-LICENSES.txt

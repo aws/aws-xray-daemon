@@ -15,7 +15,7 @@ mkdir -p ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/
 
 echo "Copying application files"
 
-cp ${BGO_SPACE}/build/xray/xray ${BGO_SPACE}/bin/debian_amd64/debian/usr/bin/
+cp ${BGO_SPACE}/build/xray-linux-amd64/xray ${BGO_SPACE}/bin/debian_amd64/debian/usr/bin/
 cp ${BGO_SPACE}/build/xray/cfg.yaml ${BGO_SPACE}/bin/debian_amd64/debian/etc/amazon/xray/cfg.yaml
 cp ${BGO_SPACE}/Tool/src/packaging/debian/xray.conf ${BGO_SPACE}/bin/debian_amd64/debian/etc/init/xray.conf
 cp ${BGO_SPACE}/Tool/src/packaging/debian/xray.service ${BGO_SPACE}/bin/debian_amd64/debian/lib/systemd/system/xray.service
@@ -73,4 +73,4 @@ echo "Constructing the deb package"
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/debian-binary
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/control.tar.gz
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/data.tar.gz
-cp ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/build/xray/aws-xray-daemon-`cat ${BGO_SPACE}/VERSION`.deb
+cp ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/dist/aws-xray-daemon-linux-amd64-`cat ${BGO_SPACE}/VERSION`.deb

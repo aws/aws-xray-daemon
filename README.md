@@ -37,7 +37,7 @@ go get -u github.com/aws/aws-xray-daemon/...
 
 ## Credential Configuration
 
-The AWS X-Ray Daemon follows default credential resolution for the [aws-sdk-go](https://docs.aws.amazon.com/sdk-for-go/api/index.html).
+The AWS X-Ray Daemon follows default credential resolution for the [aws-sdk-go](https://docs.aws.amazon.com/sdk-for-go/api/index.html#hdr-Configuring_Credentials).
 
 Follow the [guidelines](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html) for the credential configuration.
 
