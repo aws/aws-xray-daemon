@@ -9,7 +9,7 @@ endif
 export BGO_SPACE=$(shell pwd)
 path := $(BGO_SPACE):$(WORKSPACE)
 
-build: pre-build create-folder copy-file build-mac build-linux build-windows zip-linux zip-osx zip-win
+build: pre-build create-folder copy-file build-mac build-linux build-linux-arm64 build-windows zip-linux zip-osx zip-win
 
 packaging: package-rpm package-deb
 
@@ -22,6 +22,7 @@ pre-build:
 .PHONY: create-folder
 create-folder:
 	mkdir -p build/xray
+	mkdir -p build/dist
 
 .PHONY: copy-file
 copy-file:
@@ -33,18 +34,23 @@ copy-file:
 .PHONY: build-mac
 build-mac:
 	@echo "Build for MAC amd64"
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray_mac ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-mac-amd64/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
 
 .PHONY: build-linux
 build-linux:
 	@echo "Build for Linux amd64"
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-linux-amd64/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+
+.PHONY: build-linux-arm64
+build-linux-arm64:
+	@echo "Build for Linux arm64"
+	GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-linux-arm64/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
 
 .PHONY: build-windows
 build-windows:
 	@echo "Build for Windows amd64"
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing_windows.go
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray_windows.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-windows-amd64/xray_service.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing_windows.go
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-windows-amd64/xray.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
 
 .PHONY: build-docker
 build-docker:

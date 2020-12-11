@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 echo "****************************************"
-echo "Creating zip file for Linux amd64"
+echo "Creating zip file for Linux amd64 and arm64"
 echo "****************************************"
 
-BUILD_FOLDER=${BGO_SPACE}/build/xray
+DIST_FOLDER=${BGO_SPACE}/build/dist/
+cd $DIST_FOLDER
 
-if [ -f ${BUILD_FOLDER}/xray-linux.zip ]
-then
-    rm ${BUILD_FOLDER}/xray-linux.zip
-fi
-cd ${BUILD_FOLDER}
-zip aws-xray-daemon-linux-`cat ${BGO_SPACE}/VERSION`.zip xray cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt
+zip aws-xray-daemon-linux-amd64-`cat ${BGO_SPACE}/VERSION`.zip ../xray-linux-amd64/xray ../xray/cfg.yaml ../xray/LICENSE ../xray/THIRD-PARTY-LICENSES.txt
+zip aws-xray-daemon-linux-arm64-`cat ${BGO_SPACE}/VERSION`.zip ../xray-linux-arm64/xray ../xray/cfg.yaml ../xray/LICENSE ../xray/THIRD-PARTY-LICENSES.txt
