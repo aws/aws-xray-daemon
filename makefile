@@ -25,7 +25,6 @@ create-folder:
 .PHONY: copy-file
 copy-file:
 	cp pkg/cfg.yaml build/xray/
-	cp $(BGO_SPACE)/VERSION	build/xray/
 	cp $(BGO_SPACE)/LICENSE build/xray
 	cp $(BGO_SPACE)/THIRD-PARTY-LICENSES.txt build/xray
 
@@ -52,11 +51,11 @@ build-windows:
 
 .PHONY: build-docker
 build-docker:
-	docker build -t amazon/aws-xray-daemon:$(shell cat VERSION) .
+	docker build -t amazon/aws-xray-daemon:$VERSION .
 
 .PHONY: push-docker
 push-docker:
-	docker push amazon/aws-xray-daemon:$(shell cat VERSION)
+	docker push amazon/aws-xray-daemon:$VERSION
 
 .PHONY: zip-linux
 zip-linux:

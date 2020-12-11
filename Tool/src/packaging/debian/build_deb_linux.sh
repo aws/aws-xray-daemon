@@ -33,7 +33,7 @@ echo "Constructing the control file"
 echo 'Package: xray' > ${BGO_SPACE}/bin/debian_amd64/debian/control
 echo 'Architecture: amd64' >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 echo -n 'Version: ' >> ${BGO_SPACE}/bin/debian_amd64/debian/control
-cat ${BGO_SPACE}/VERSION | tr -d "\n" >> ${BGO_SPACE}/bin/debian_amd64/debian/control
+echo $VERSION | tr -d "\n" >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 echo '-1' >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 cat ${BGO_SPACE}/Tool/src/packaging/debian/control >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 
@@ -45,7 +45,7 @@ cat ${BGO_SPACE}/THIRD-PARTY-LICENSES.txt >> ${BGO_SPACE}/bin/debian_amd64/debia
 echo "Constructing the changelog file"
 
 echo -n 'xray (' > ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/changelog
-cat VERSION | tr -d "\n"  >> ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/changelog
+echo $VERSION >> ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/changelog
 echo '-1) precise-proposed; urgency=low' >> ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/changelog
 cat ${BGO_SPACE}/Tool/src/packaging/debian/changelog >> ${BGO_SPACE}/bin/debian_amd64/debian/usr/share/doc/xray/changelog
 
@@ -73,4 +73,4 @@ echo "Constructing the deb package"
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/debian-binary
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/control.tar.gz
 ar r ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/bin/debian_amd64/debian/data.tar.gz
-cp ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-amd64-`cat ${BGO_SPACE}/VERSION`.deb
+cp ${BGO_SPACE}/bin/xray.deb ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.deb
