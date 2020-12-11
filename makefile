@@ -11,9 +11,9 @@ export GO_LDFLAGS=-ldflags "-s -w -X github.com/aws/aws-xray-daemon/pkg/cfg.Vers
 export BGO_SPACE=$(shell pwd)
 path := $(BGO_SPACE):$(WORKSPACE)
 
-build: create-folder copy-file build-mac build-linux build-linux-arm64 build-windows zip-linux zip-osx zip-win
+build: create-folder copy-file build-mac build-linux build-linux-arm64 build-windows
 
-packaging: package-rpm package-deb
+packaging: zip-linux zip-osx zip-win package-rpm package-deb
 
 release: build test packaging clean-folder
 

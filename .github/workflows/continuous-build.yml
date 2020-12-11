@@ -35,7 +35,7 @@ jobs:
         env:
           VERSION: ${{ github.sha }}
       - name: Build linux archives
-        if: ${{ runner.os == 'ubuntu-latest' }}
+        if: ${{ runner.os == 'Linux' }}
         run: make packaging
 
   build_docker:
