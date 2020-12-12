@@ -11,13 +11,13 @@ package conn
 
 import (
 	"crypto/tls"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
+	"encoding/json"
+	"io/ioutil"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -151,7 +151,7 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 			es := getDefaultSession()
 			awsRegion, err = cn.getEC2Region(es)
 			if err != nil {
-				log.Infof("Unable to fetch region from EC2 metadata: %v\n", err)
+				log.Errorf("Unable to fetch region from EC2 metadata: %v\n", err)
 			} else {
 				log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
 			}
