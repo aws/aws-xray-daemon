@@ -121,7 +121,7 @@ func getRegionFromECSMetadata() string {
 			log.Errorf("Unable to open ECS metadata file: %v\n", err)
 		} else {
 			if err := json.Unmarshal(metadataFile, &dat); err != nil {
-				log.Errorf("Unable to read ECS metadatafile contents: %v", err)
+				log.Errorf("Unable to read ECS metadata file contents: %v", err)
 			} else {
 				taskArn = strings.Split(dat["TaskARN"].(string), ":")
 				region = taskArn[3]
@@ -135,7 +135,6 @@ func getRegionFromECSMetadata() string {
 // GetAWSConfigSession returns AWS config and session instances.
 func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region string, noMetadata bool) (*aws.Config, *session.Session) {
 	var s *session.Session
-	var err error
 	var awsRegion string
 	http := getNewHTTPClient(cfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, cfg.ParameterConfigValue.Processor.RequestTimeout, *c.NoVerifySSL, c.ProxyAddress)
 	regionEnv := os.Getenv("AWS_REGION")
@@ -149,11 +148,11 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 		awsRegion = getRegionFromECSMetadata()
 		if awsRegion == "" {
 			es := getDefaultSession()
-			awsRegion, err = cn.getEC2Region(es)
-			if err != nil {
-				log.Errorf("Unable to fetch region from EC2 metadata: %v\n", err)
-			} else {
-				log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
+			awsRegion, _ = cn.getEC2Region(es)
+			log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
+			if awsRegion == "" {
+				awsRegion = *es.Config.Region
+				log.Debugf("Fetched region %v from session config", awsRegion)
 			}
 		}
 	}
@@ -286,7 +285,7 @@ func getSTSRegionalEndpoint(r string) string {
 }
 
 func getDefaultSession() *session.Session {
-	result, serr := session.NewSession()
+	result, serr := session.NewSessionWithOptions(session.Options{SharedConfigState: session.SharedConfigEnable})
 	if serr != nil {
 		log.Errorf("Error in creating session object : %v\n.", serr)
 		os.Exit(1)
