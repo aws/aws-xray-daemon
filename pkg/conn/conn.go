@@ -11,13 +11,13 @@ package conn
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"time"
-	"encoding/json"
-	"io/ioutil"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -135,6 +135,7 @@ func getRegionFromECSMetadata() string {
 // GetAWSConfigSession returns AWS config and session instances.
 func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region string, noMetadata bool) (*aws.Config, *session.Session) {
 	var s *session.Session
+	var err error
 	var awsRegion string
 	http := getNewHTTPClient(cfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, cfg.ParameterConfigValue.Processor.RequestTimeout, *c.NoVerifySSL, c.ProxyAddress)
 	regionEnv := os.Getenv("AWS_REGION")
@@ -148,16 +149,21 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 		awsRegion = getRegionFromECSMetadata()
 		if awsRegion == "" {
 			es := getDefaultSession()
-			awsRegion, _ = cn.getEC2Region(es)
-			log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
-			if awsRegion == "" {
-				awsRegion = *es.Config.Region
-				log.Debugf("Fetched region %v from session config", awsRegion)
+			awsRegion, err = cn.getEC2Region(es)
+			if err != nil {
+				log.Infof("Unable to fetch region from EC2 metadata: %v\n", err)
+			} else {
+				log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
 			}
 		}
+	} else {
+		es := getDefaultSession()
+		awsRegion = *es.Config.Region
+		log.Debugf("Fetched region %v from session config", awsRegion)
+
 	}
 	if awsRegion == "" {
-		log.Errorf("Cannot fetch region variable from config file, environment variables, ecs metadata, or ec2 metadata.")
+		log.Errorf("Cannot fetch region variable from config file, environment variables, ecs metadata, or ec2 metadata. Use local-mode to use the local session region.")
 		os.Exit(1)
 	}
 	s = cn.newAWSSession(roleArn, awsRegion)
