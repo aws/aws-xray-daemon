@@ -81,6 +81,20 @@ GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o xray cmd/tracing/daemon.go 
 ```
 As of Aug 31, 2020, windows and darwin builds for ARM64 are not supported by `go build`.
 
+## Pulling X-Ray Daemon image from ECR Public Gallery
+####  Pull alpha tag from Public ECR Gallery
+``
+docker pull public.ecr.aws/e2w6v5y3/amazon/aws-xray-daemon:alpha
+``
+
+####  Pull released version tag from Public ECR Gallery
+
+``
+docker pull public.ecr.aws/e2w6v5y3/amazon/aws-xray-daemon:3.3.0
+``
+
+NOTE: We are not recommending to use daemon image with alpha tag in production environment. For production environment customer should pull in an image with released tag. [Public ECR Gallery](https://gallery.ecr.aws/e2w6v5y3/amazon/aws-xray-daemon) will have release/stable version image tag starting from daemon 3.3.0 release.
+
 ## Testing  
 
 `make test` will run unit tests for the X-Ray daemon.  
