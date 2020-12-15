@@ -59,12 +59,12 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: docker run -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} --rm amazon/aws-cli ecr-public get-login-password --region us-east-1 | docker login -u AWS --password-stdin public.ecr.aws
 
-      - name: Login to DockerHub
-        if: ${{ github.event_name == 'push' }}
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
+#      - name: Login to DockerHub
+#        if: ${{ github.event_name == 'push' }}
+#        uses: docker/login-action@v1
+#        with:
+#          username: ${{ secrets.DOCKER_USER }}
+#          password: ${{ secrets.DOCKER_PASS }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -86,9 +86,7 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: |
-            amazon/aws-xray-daemon:alpha
-            public.ecr.aws/u5g3z6k3/test:alpha
+          tags: public.ecr.aws/u5g3z6k3/test:alpha
           push: ${{ github.event_name == 'push' }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
