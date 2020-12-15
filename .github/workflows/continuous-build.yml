@@ -61,8 +61,6 @@ jobs:
           registry: public.ecr.aws
           username: ${{ secrets.AWS_ACCESS_KEY_ID }}
           password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        env:
-          AWS_REGION: us-west-2
 
 #      - name: Login to DockerHub
 #        if: ${{ github.event_name == 'push' }}
