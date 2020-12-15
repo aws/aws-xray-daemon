@@ -47,13 +47,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Install latest version of aws cli
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          aws --version
-
       - name: Configure AWS Credentials
         if: ${{ github.event_name == 'push' }}
         uses: aws-actions/configure-aws-credentials@v1
@@ -62,9 +55,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Login to Amazon ECR
-        if: ${{ github.event_name == 'push' }}
-        run: aws ecr-public get-login-password --region us-east-1 | docker login -u AWS --password-stdin public.ecr.aws
+      - name: Login to Public ECR
+        uses: docker/login-action@v1
+        with:
+          registry: public.ecr.aws
 
 #      - name: Login to DockerHub
 #        if: ${{ github.event_name == 'push' }}
