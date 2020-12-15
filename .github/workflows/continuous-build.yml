@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-      - daemon-ecr-publisher
+      - daemon-ecr-publish
   pull_request:
     branches:
       - master
