@@ -9,39 +9,39 @@ on:
       - master
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '^1.15'
-
-      - uses: actions/cache@v2
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Run tests
-        run: go test -cover ./...
-
-      - name: Build daemon
-        run: go build ./cmd/tracing
+#  build:
+#    name: Build on ${{ matrix.os }}
+#    strategy:
+#      matrix:
+#        os:
+#          - macos-latest
+#          - ubuntu-latest
+#          - windows-latest
+#    runs-on: ${{ matrix.os }}
+#    steps:
+#      - name: Checkout Repository
+#        uses: actions/checkout@v2
+#
+#      - name: Setup Go
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: '^1.15'
+#
+#      - uses: actions/cache@v2
+#        with:
+#          path: ~/go/pkg/mod
+#          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+#          restore-keys: |
+#            ${{ runner.os }}-go-
+#
+#      - name: Run tests
+#        run: go test -cover ./...
+#
+#      - name: Build daemon
+#        run: go build ./cmd/tracing
   build_publish_daemon_image:
     name: Build and Publish X-Ray daemon docker image to docker hub and ECR
-    needs: build
+#    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
