@@ -1,54 +1,50 @@
-name: Continuous Build
+name: Continuous Build and Publish
 on:
   push:
     branches:
       - master
-      - daemon-ecr-publish
   pull_request:
     branches:
       - master
 
 jobs:
-#  build:
-#    name: Build on ${{ matrix.os }}
-#    strategy:
-#      matrix:
-#        os:
-#          - macos-latest
-#          - ubuntu-latest
-#          - windows-latest
-#    runs-on: ${{ matrix.os }}
-#    steps:
-#      - name: Checkout Repository
-#        uses: actions/checkout@v2
-#
-#      - name: Setup Go
-#        uses: actions/setup-go@v2
-#        with:
-#          go-version: '^1.15'
-#
-#      - uses: actions/cache@v2
-#        with:
-#          path: ~/go/pkg/mod
-#          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-#          restore-keys: |
-#            ${{ runner.os }}-go-
-#
-#      - name: Run tests
-#        run: go test -cover ./...
-#
-#      - name: Build daemon
-#        run: go build ./cmd/tracing
-  build_publish_daemon_image:
-    name: Build and Publish X-Ray daemon docker image to docker hub and ECR
-#    needs: build
-    runs-on: ubuntu-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Check aws version
-        run: aws --version
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15'
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Run tests
+        run: go test -cover ./...
+
+      - name: Build daemon
+        run: go build ./cmd/tracing
+  build_publish_daemon_image:
+    name: Build and Publish X-Ray daemon docker image (alpha tag) to docker hub and ECR
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
 
       - name: Configure AWS Credentials
         if: ${{ github.event_name == 'push' }}
@@ -59,21 +55,17 @@ jobs:
           aws-region: us-east-1
 
       - name: Login to Public ECR
+        if: ${{ github.event_name == 'push' }}
         uses: docker/login-action@v1
         with:
           registry: public.ecr.aws
-#          username: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#          password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#        env:
-#          AWS_REGION: us-east-1
 
-
-#      - name: Login to DockerHub
-#        if: ${{ github.event_name == 'push' }}
-#        uses: docker/login-action@v1
-#        with:
-#          username: ${{ secrets.DOCKER_USER }}
-#          password: ${{ secrets.DOCKER_PASS }}
+      - name: Login to DockerHub
+        if: ${{ github.event_name == 'push' }}
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -95,7 +87,9 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: public.ecr.aws/u5g3z6k3/test:alpha
+          tags: |
+            amazon/aws-xray-daemon:alpha
+            public.ecr.aws/xray-daemon/amazon/aws-xray-daemon:alpha
           push: ${{ github.event_name == 'push' }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
