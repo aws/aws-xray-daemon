@@ -8,18 +8,11 @@ on:
 
 jobs:
   build_publish_daemon_image:
-    name: Build and Publish X-Ray daemon docker image to docker hub and ECR
+    name: Build and Publish X-Ray daemon docker image to docker hub and public ECR
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
-
-      - name: Install latest version of aws cli
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          aws --version
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -28,8 +21,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Login to Amazon ECR
-        run: aws ecr-public get-login-password --region us-east-1 | docker login -u AWS --password-stdin public.ecr.aws
+      - name: Login to Public ECR
+        uses: docker/login-action@v1
+        with:
+          registry: public.ecr.aws
 
       - name: Login to DockerHub
         uses: docker/login-action@v1
@@ -59,7 +54,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             amazon/aws-xray-daemon:${{ github.event.inputs.version }}
-            public.ecr.aws/u5g3z6k3/amazon/aws-xray-daemon:${{ github.event.inputs.version }}
+            public.ecr.aws/xray-daemon/amazon/aws-xray-daemon:${{ github.event.inputs.version }}
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
