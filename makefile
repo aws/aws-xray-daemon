@@ -38,7 +38,7 @@ build-mac:
 .PHONY: build-linux
 build-linux:
 	@echo "Build for Linux amd64"
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
 
 .PHONY: build-windows
 build-windows:
