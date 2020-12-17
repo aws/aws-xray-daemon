@@ -33,7 +33,7 @@ echo "Constructing the control file"
 echo 'Package: xray' > ${BGO_SPACE}/bin/debian_amd64/debian/control
 echo 'Architecture: amd64' >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 echo -n 'Version: ' >> ${BGO_SPACE}/bin/debian_amd64/debian/control
-echo $VERSION | tr -d "\n" >> ${BGO_SPACE}/bin/debian_amd64/debian/control
+echo $VERSION >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 echo '-1' >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 cat ${BGO_SPACE}/Tool/src/packaging/debian/control >> ${BGO_SPACE}/bin/debian_amd64/debian/control
 
