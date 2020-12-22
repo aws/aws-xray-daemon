@@ -30,10 +30,20 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Run tests
-        run: go test -cover ./...
-      - name: Build daemon
-        run: go build ./cmd/tracing
+      - name: Build archives and test
+        run: make build test
+        env:
+          VERSION: ${{ github.sha }}
+      - name: Build linux archives
+        if: ${{ runner.os == 'Linux' }}
+        run: make packaging
+      - name: Upload archives as actions artifact
+        if: ${{ runner.os == 'Linux' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: distributions
+          path: build/dist/
+
   build_docker:
     name: Build Docker image
     needs: build
