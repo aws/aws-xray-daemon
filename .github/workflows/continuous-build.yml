@@ -33,11 +33,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run tests
-        run: go test -cover ./...
+      - name: Build archives and test
+        run: make build test
+        env:
+          VERSION: ${{ github.sha }}
+      
+      - name: Build linux archives
+        if: ${{ runner.os == 'Linux' }}
+        run: make packaging
+      
+      - name: Upload archives as actions artifact
+        if: ${{ runner.os == 'Linux' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: distributions
+          path: build/dist/
 
-      - name: Build daemon
-        run: go build ./cmd/tracing
   build_publish_daemon_image:
     name: Build and Publish X-Ray daemon docker image (alpha tag) to docker hub and ECR
     needs: build
