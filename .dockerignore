@@ -6,7 +6,6 @@ Dockerfile
 
 bin
 test_coverage
-build
 .idea
 .DS_Store
 
