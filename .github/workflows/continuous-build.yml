@@ -50,7 +50,7 @@ jobs:
           path: build/dist/
 
       - name: Configure AWS Credentials
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -58,7 +58,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Login to Public ECR
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         uses: docker/login-action@v1
         with:
           registry: public.ecr.aws
