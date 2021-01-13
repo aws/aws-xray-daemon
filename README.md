@@ -93,7 +93,7 @@ docker pull public.ecr.aws/xray/aws-xray-daemon:alpha
 docker pull public.ecr.aws/xray/aws-xray-daemon:3.3.0
 ``
 
-NOTE: We are not recommending to use daemon image with alpha tag in production environment. For production environment customer should pull in an image with released tag. [Public ECR Gallery](https://gallery.ecr.aws/e2w6v5y3/amazon/aws-xray-daemon) will have release/stable version image tag starting from daemon 3.3.0 release.
+NOTE: We are not recommending to use daemon image with alpha tag in production environment. For production environment customer should pull in an image with released tag. [Public ECR Gallery](https://gallery.ecr.aws/xray/aws-xray-daemon) will have release/stable version image tag starting from daemon 3.3.0 release.
 
 ## Testing  
 
