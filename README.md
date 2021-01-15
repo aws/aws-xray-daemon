@@ -85,6 +85,7 @@ As of Aug 31, 2020, windows and darwin builds for ARM64 are not supported by `go
 Before pulling an image authenticate your docker client to the Amazon ECR public registry. For registry authentication options follow this [link](https://docs.aws.amazon.com/AmazonECR/latest/public/public-registries.html#public-registry-auth)
 
 Run below command to authenticate to public ECR registry using `get-login-password` (AWS CLI)
+
 ``
 aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
 ``
