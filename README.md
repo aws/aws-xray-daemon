@@ -82,7 +82,7 @@ GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o xray cmd/tracing/daemon.go 
 As of Aug 31, 2020, windows and darwin builds for ARM64 are not supported by `go build`.
 
 ## Pulling X-Ray Daemon image from ECR Public Gallery
-Before pulling an image authenticate your docker client to the Amazon ECR public registry. For registry authentication options follow this [link](https://docs.aws.amazon.com/AmazonECR/latest/public/public-registries.html#public-registry-auth)
+Before pulling an image you should authenticate your docker client to the Amazon ECR public registry. For registry authentication options follow this [link](https://docs.aws.amazon.com/AmazonECR/latest/public/public-registries.html#public-registry-auth)
 
 Run below command to authenticate to public ECR registry using `get-login-password` (AWS CLI)
 
