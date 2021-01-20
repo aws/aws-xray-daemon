@@ -71,7 +71,8 @@ zip-win:
 
 .PHONY: package-deb
 package-deb:
-	$(BGO_SPACE)/Tool/src/packaging/debian/build_deb_linux.sh
+	$(BGO_SPACE)/Tool/src/packaging/debian/build_deb_linux.sh amd64
+	$(BGO_SPACE)/Tool/src/packaging/debian/build_deb_linux.sh arm64
 
 .PHONY: package-rpm
 package-rpm:
