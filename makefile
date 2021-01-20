@@ -76,7 +76,8 @@ package-deb:
 
 .PHONY: package-rpm
 package-rpm:
-	-$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh
+	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh amd64
+	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh arm64
 
 .PHONY: test
 test:
