@@ -79,6 +79,28 @@ package-rpm:
 	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh amd64
 	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh arm64
 
+# This will be removed in the next major version release
+build-package-legacy:
+	@echo "===Building legacy artifacts with older names==="
+	cd $(BGO_SPACE)
+
+	@echo "Building and packaging legacy artifacts for Linux"
+	cp $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.zip $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-${VERSION}.zip
+	cp $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.rpm $(BGO_SPACE)/build/dist/aws-xray-daemon-${VERSION}.rpm
+	cp $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.deb $(BGO_SPACE)/build/dist/aws-xray-daemon-${VERSION}.deb
+	cp $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-arm64-${VERSION}.rpm $(BGO_SPACE)/build/dist/aws-xray-daemon-arm64-${VERSION}.rpm
+	cp $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-arm64-${VERSION}.deb $(BGO_SPACE)/build/dist/aws-xray-daemon-arm64-${VERSION}.deb
+
+	@echo "Building and packaging legacy artifacts for MacOS"
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-mac-legacy/xray_mac ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+	zip $(BGO_SPACE)/build/dist/aws-xray-daemon-macos-${VERSION}.zip $(BGO_SPACE)/build/xray-mac-legacy/xray_mac $(BGO_SPACE)/build/xray/cfg.yaml $(BGO_SPACE)/build/xray/LICENSE $(BGO_SPACE)/build/xray/THIRD-PARTY-LICENSES.txt
+
+	@echo "Building and packaging legacy artifacts for Windows"
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-win-legacy/xray.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing_windows.go
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-win-legacy/xray_windows.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+	zip $(BGO_SPACE)/build/dist/aws-xray-daemon-windows-service-${VERSION}.zip $(BGO_SPACE)/build/xray-win-legacy/xray.exe $(BGO_SPACE)/build/xray/cfg.yaml $(BGO_SPACE)/build/xray/LICENSE $(BGO_SPACE)/build/xray/THIRD-PARTY-LICENSES.txt
+	zip $(BGO_SPACE)/build/dist/aws-xray-daemon-windows-process-${VERSION}.zip $(BGO_SPACE)/build/xray-win-legacy/xray_windows.exe $(BGO_SPACE)/build/xray/cfg.yaml $(BGO_SPACE)/build/xray/LICENSE $(BGO_SPACE)/build/xray/THIRD-PARTY-LICENSES.txt
+
 .PHONY: test
 test:
 	@echo "Testing daemon"
