@@ -33,6 +33,8 @@ jobs:
 
       - name: Build linux archives
         run: make packaging
+        env:
+          VERSION: ${{ github.event.inputs.version }}
 
       - name: Upload archives as actions artifact
         uses: actions/upload-artifact@v2
