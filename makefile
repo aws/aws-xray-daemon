@@ -19,14 +19,13 @@ release: build test packaging clean-folder
 
 .PHONY: create-folder
 create-folder:
-	mkdir -p build/xray
 	mkdir -p build/dist
 
 .PHONY: copy-file
 copy-file:
-	cp pkg/cfg.yaml build/xray/
-	cp $(BGO_SPACE)/LICENSE build/xray
-	cp $(BGO_SPACE)/THIRD-PARTY-LICENSES.txt build/xray
+	cp pkg/cfg.yaml build/dist/
+	cp $(BGO_SPACE)/LICENSE build/dist
+	cp $(BGO_SPACE)/THIRD-PARTY-LICENSES.txt build/dist
 
 .PHONY: build-mac
 build-mac:
