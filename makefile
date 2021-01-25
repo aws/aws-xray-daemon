@@ -82,8 +82,8 @@ package-rpm:
 .PHONY: build-package-legacy
 build-package-legacy:
 	@echo "===Building legacy artifacts with older names==="
-	cd $(BGO_SPACE)
-	LEGACY_VERSION=3.x
+	cd $(BGO_SPACE)/build/dist
+	LEGACY_VERSION="3.x"
 
 	@echo "Building and packaging legacy artifacts for Linux"
 	cp $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.zip $(BGO_SPACE)/build/dist/aws-xray-daemon-linux-${LEGACY_VERSION}.zip
@@ -94,13 +94,19 @@ build-package-legacy:
 
 	@echo "Building and packaging legacy artifacts for MacOS"
 	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-mac-legacy/xray_mac ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
-	zip $(BGO_SPACE)/build/dist/aws-xray-daemon-macos-${VERSION}.zip $(BGO_SPACE)/build/xray-mac-legacy/xray_mac $(BGO_SPACE)/build/xray/cfg.yaml $(BGO_SPACE)/build/xray/LICENSE $(BGO_SPACE)/build/xray/THIRD-PARTY-LICENSES.txt
+	cp ../xray-mac-legacy/xray_mac xray_mac
+	zip aws-xray-daemon-macos-${LEGACY_VERSION}.zip xray_mac cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt
+	rm xray_mac
 
 	@echo "Building and packaging legacy artifacts for Windows"
 	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-win-legacy/xray.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing_windows.go
 	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o $(BGO_SPACE)/build/xray-win-legacy/xray_windows.exe ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
-	zip $(BGO_SPACE)/build/dist/aws-xray-daemon-windows-service-${LEGACY_VERSION}.zip $(BGO_SPACE)/build/xray-win-legacy/xray.exe $(BGO_SPACE)/build/xray/cfg.yaml $(BGO_SPACE)/build/xray/LICENSE $(BGO_SPACE)/build/xray/THIRD-PARTY-LICENSES.txt
-	zip $(BGO_SPACE)/build/dist/aws-xray-daemon-windows-process-${LEGACY_VERSION}.zip $(BGO_SPACE)/build/xray-win-legacy/xray_windows.exe $(BGO_SPACE)/build/xray/cfg.yaml $(BGO_SPACE)/build/xray/LICENSE $(BGO_SPACE)/build/xray/THIRD-PARTY-LICENSES.txt
+	cp ../xray-win-legacy/xray.exe xray.exe
+	zip aws-xray-daemon-windows-service-${LEGACY_VERSION}.zip xray.exe cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt
+	rm xray.exe
+	cp ../xray-win-legacy/xray_windows.exe xray_windows.exe
+	zip aws-xray-daemon-windows-process-${LEGACY_VERSION}.zip xray_windows.exe cfg.yaml LICENSE THIRD-PARTY-LICENSES.txt
+	rm xray_windows.exe
 
 .PHONY: test
 test:
