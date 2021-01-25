@@ -32,6 +32,7 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
 
       - name: Build linux archives
+        if: ${{ runner.os == 'Linux' }}
         run: make packaging
         env:
           VERSION: ${{ github.event.inputs.version }}
