@@ -19,7 +19,7 @@ mkdir -p ${BGO_SPACE}/bin/debian_${ARCH}/debian/usr/share/doc/xray/
 echo "Copying application files"
 
 cp ${BGO_SPACE}/build/xray-linux-${ARCH}/xray ${BGO_SPACE}/bin/debian_${ARCH}/debian/usr/bin/
-cp ${BGO_SPACE}/build/xray/cfg.yaml ${BGO_SPACE}/bin/debian_${ARCH}/debian/etc/amazon/xray/cfg.yaml
+cp ${BGO_SPACE}/build/dist/cfg.yaml ${BGO_SPACE}/bin/debian_${ARCH}/debian/etc/amazon/xray/cfg.yaml
 cp ${BGO_SPACE}/Tool/src/packaging/debian/xray.conf ${BGO_SPACE}/bin/debian_${ARCH}/debian/etc/init/xray.conf
 cp ${BGO_SPACE}/Tool/src/packaging/debian/xray.service ${BGO_SPACE}/bin/debian_${ARCH}/debian/lib/systemd/system/xray.service
 
