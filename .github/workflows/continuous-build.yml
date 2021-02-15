@@ -41,6 +41,8 @@ jobs:
       - name: Build linux archives
         if: ${{ runner.os == 'Linux' }}
         run: make packaging
+        env:
+          VERSION: ${{ github.sha }}
       
       - name: Upload archives as actions artifact
         if: ${{ runner.os == 'Linux' }}

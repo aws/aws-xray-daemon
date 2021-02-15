@@ -13,20 +13,19 @@ path := $(BGO_SPACE):$(WORKSPACE)
 
 build: create-folder copy-file build-mac build-linux-amd64 build-linux-arm64 build-windows
 
-packaging: zip-linux zip-osx zip-win package-rpm package-deb
+packaging: zip-linux zip-osx zip-win package-rpm package-deb build-package-legacy
 
 release: build test packaging clean-folder
 
 .PHONY: create-folder
 create-folder:
-	mkdir -p build/xray
 	mkdir -p build/dist
 
 .PHONY: copy-file
 copy-file:
-	cp pkg/cfg.yaml build/xray/
-	cp $(BGO_SPACE)/LICENSE build/xray
-	cp $(BGO_SPACE)/THIRD-PARTY-LICENSES.txt build/xray
+	cp pkg/cfg.yaml build/dist/
+	cp $(BGO_SPACE)/LICENSE build/dist
+	cp $(BGO_SPACE)/THIRD-PARTY-LICENSES.txt build/dist
 
 .PHONY: build-mac
 build-mac:
@@ -71,11 +70,18 @@ zip-win:
 
 .PHONY: package-deb
 package-deb:
-	$(BGO_SPACE)/Tool/src/packaging/debian/build_deb_linux.sh
+	$(BGO_SPACE)/Tool/src/packaging/debian/build_deb_linux.sh amd64
+	$(BGO_SPACE)/Tool/src/packaging/debian/build_deb_linux.sh arm64
 
 .PHONY: package-rpm
 package-rpm:
-	-$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh
+	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh amd64
+	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh arm64
+
+# This will be removed in the next major version release
+.PHONY: build-package-legacy
+build-package-legacy:
+	$(BGO_SPACE)/Tool/src/packaging/build-package-legacy.sh
 
 .PHONY: test
 test:
