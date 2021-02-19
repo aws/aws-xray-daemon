@@ -9,7 +9,7 @@ Description=AWS X-Ray Daemon
 After=network-online.target
 
 [Service]
-Type=simple
+Type=exec
 WorkingDirectory=/usr/bin/
 User=xray
 Group=xray
