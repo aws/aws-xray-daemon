@@ -11,7 +11,7 @@ export GO_LDFLAGS=-ldflags "-s -w -X github.com/aws/aws-xray-daemon/pkg/cfg.Vers
 export BGO_SPACE=$(shell pwd)
 path := $(BGO_SPACE):$(WORKSPACE)
 
-build: create-folder copy-file build-mac build-linux-amd64 build-linux-arm64 build-windows
+build: create-folder copy-file build-mac-amd64 build-mac-arm64 build-linux-amd64 build-linux-arm64 build-windows
 
 packaging: zip-linux zip-osx zip-win package-rpm package-deb build-package-legacy
 
@@ -27,10 +27,15 @@ copy-file:
 	cp $(BGO_SPACE)/LICENSE build/dist
 	cp $(BGO_SPACE)/THIRD-PARTY-LICENSES.txt build/dist
 
-.PHONY: build-mac
-build-mac:
+.PHONY: build-mac-amd64
+build-mac-amd64:
 	@echo "Build for MAC amd64"
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BGO_SPACE)/build/xray-mac-amd64/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
+
+.PHONY: build-mac-arm64
+build-mac-arm64:
+	@echo "Build for MAC arm64"
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build $(GO_LDFLAGS) -o $(BGO_SPACE)/build/xray-mac-arm64/xray ${PREFIX}/cmd/tracing/daemon.go ${PREFIX}/cmd/tracing/tracing.go
 
 .PHONY: build-linux-amd64
 build-linux-amd64:

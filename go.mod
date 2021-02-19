@@ -1,6 +1,6 @@
 module github.com/aws/aws-xray-daemon
 
-go 1.13
+go 1.16
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
@@ -10,5 +10,6 @@ require (
 	github.com/shirou/gopsutil v2.19.10+incompatible
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2
+	golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
 	gopkg.in/yaml.v2 v2.2.7
 )
