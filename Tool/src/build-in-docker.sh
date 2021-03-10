@@ -1,7 +1,8 @@
 #!/bin/sh
 
-TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 BUILD_FOLDER=${TARGETPLATFORM/\//-}
+
+echo "Building for platform ${TARGETPLATFORM}"
 
 if [[ -d "/workspace/build/xray-${BUILD_FOLDER}" ]]; then
   echo "Copying prebuilt binary"
