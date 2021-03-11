@@ -28,7 +28,8 @@ const (
 	backoffBaseSeconds = 1
 )
 
-var /* const */ idRegexp = regexp.MustCompile(`\"id\":\"(.*?)\"`)
+var /* const */ segIdRegexp = regexp.MustCompile(`\"id\":\"(.*?)\"`)
+var /* const */ traceIdRegexp = regexp.MustCompile(`\"trace_id\":\"(.*?)\"`)
 
 // Structure for trace segments batch.
 type segmentsBatch struct {
@@ -98,16 +99,17 @@ func (s *segmentsBatch) poll() {
 					len(r.UnprocessedTraceSegments), elapsed.Seconds())
 				batchesMap := make(map[string]string)
 				for i := 0; i < len(batch); i++ {
-					idStrs := idRegexp.FindStringSubmatch(*batch[i])
-					if len(idStrs) != 2 {
+					segIdStrs := segIdRegexp.FindStringSubmatch(*batch[i])
+					if len(segIdStrs) != 2 {
 						log.Debugf("Failed to match \"id\" in segment: ", *batch[i])
 						continue
 					}
-					batchesMap[idStrs[1]] = *batch[i]
+					batchesMap[segIdStrs[1]] = *batch[i]
 				}
 				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 					telemetry.T.SegmentRejected(1)
-					log.Errorf("Unprocessed segment: %v", unprocessedSegment)
+					traceId := traceIdRegexp.FindStringSubmatch(batchesMap[*unprocessedSegment.Id])[1]
+					log.Errorf("Unprocessed trace %v, segment: %v", traceId, unprocessedSegment)
 					log.Debugf(batchesMap[*unprocessedSegment.Id])
 				}
 			} else {
