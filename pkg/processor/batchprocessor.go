@@ -108,8 +108,12 @@ func (s *segmentsBatch) poll() {
 				}
 				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 					telemetry.T.SegmentRejected(1)
-					traceId := traceIdRegexp.FindStringSubmatch(batchesMap[*unprocessedSegment.Id])[1]
-					log.Errorf("Unprocessed trace %v, segment: %v", traceId, unprocessedSegment)
+					traceIdStrs := traceIdRegexp.FindStringSubmatch(batchesMap[*unprocessedSegment.Id])
+					if len(traceIdStrs) != 2 {
+						log.Errorf("Unprocessed segment: %v", unprocessedSegment)
+					} else {
+						log.Errorf("Unprocessed trace %v, segment: %v", traceIdStrs[1], unprocessedSegment)
+					}
 					log.Debugf(batchesMap[*unprocessedSegment.Id])
 				}
 			} else {
