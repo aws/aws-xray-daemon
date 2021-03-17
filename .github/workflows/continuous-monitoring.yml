@@ -33,12 +33,9 @@ jobs:
           fi
 
       - name: Run daemon image
-        run: docker run --name xray-daemon public.ecr.aws/xray/aws-xray-daemon:latest -n us-west-2 &
-
-      - name: Sleep for 30 seconds
-        uses: jakejarvis/wait-action@master
-        with:
-          time: '30s'
+        run: |
+          docker run --name xray-daemon public.ecr.aws/xray/aws-xray-daemon:latest -n us-west-2 &
+          sleep 30
 
       - name: Publish metrics on daemon startup
         if: ${{ always() }}
@@ -79,12 +76,9 @@ jobs:
           fi
 
       - name: Run daemon image
-        run: docker run --name xray-daemon amazon/aws-xray-daemon:latest -n us-west-2 &
-
-      - name: Sleep for 30 seconds
-        uses: jakejarvis/wait-action@master
-        with:
-          time: '30s'
+        run: |
+          docker run --name xray-daemon amazon/aws-xray-daemon:latest -n us-west-2 &
+          sleep 30
 
       - name: Publish metrics on daemon startup
         if: ${{ always() }}
