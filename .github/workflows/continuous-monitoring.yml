@@ -11,17 +11,18 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST_ACCOUNT }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST_ACCOUNT }}
           aws-region: us-east-1
 
       - name: Pull an image from public ECR
+        id: pull-from-ecr
         run: docker pull public.ecr.aws/xray/aws-xray-daemon:latest
 
       - name: Publish metric on pulling an image
         if: ${{ always() }}
         run: |
-          if [[ "$(docker images -q public.ecr.aws/xray/aws-xray-daemon:latest 2> /dev/null)" == "" ]]; then
+          if [[ "${{ steps.pull-from-ecr.outcome }}" == "failure" ]]; then
             aws cloudwatch put-metric-data --metric-name PullImageFailureFromECR --dimensions failure=rate --namespace MonitorDaemon --value 1 --timestamp $(date +%s)
           else
             aws cloudwatch put-metric-data --metric-name PullImageFailureFromECR --dimensions failure=rate --namespace MonitorDaemon --value 0 --timestamp $(date +%s)
@@ -48,17 +49,18 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST_ACCOUNT }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST_ACCOUNT }}
           aws-region: us-east-1
 
       - name: Pull an image from docker hub
+        id: pull-from-dockerhub
         run: docker pull amazon/aws-xray-daemon:latest
 
       - name: Publish metric on pulling an image
         if: ${{ always() }}
         run: |
-          if [[ "$(docker images -q amazon/aws-xray-daemon:latest 2> /dev/null)" == "" ]]; then
+          if [[ "${{ steps.pull-from-dockerhub.outcome }}" == "failure"  ]]; then
             aws cloudwatch put-metric-data --metric-name PullImageFailureFromDockerhub --dimensions failure=rate --namespace MonitorDaemon --value 1 --timestamp $(date +%s)
           else
             aws cloudwatch put-metric-data --metric-name PullImageFailureFromDockerhub --dimensions failure=rate --namespace MonitorDaemon --value 0 --timestamp $(date +%s)
