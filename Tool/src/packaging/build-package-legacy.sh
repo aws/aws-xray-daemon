@@ -12,7 +12,6 @@ echo "Building and packaging legacy artifacts for Linux"
 cp ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.zip ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-3.x.zip
 cp ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.rpm ${BGO_SPACE}/build/dist/aws-xray-daemon-3.x.rpm
 cp ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-amd64-${VERSION}.deb ${BGO_SPACE}/build/dist/aws-xray-daemon-3.x.deb
-cp ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-arm64-${VERSION}.zip ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-arm64-3.x.zip
 cp ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-arm64-${VERSION}.rpm ${BGO_SPACE}/build/dist/aws-xray-daemon-arm64-3.x.rpm
 cp ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-arm64-${VERSION}.deb ${BGO_SPACE}/build/dist/aws-xray-daemon-arm64-3.x.deb
 
