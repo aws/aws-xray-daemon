@@ -45,7 +45,7 @@ jobs:
           VERSION: ${{ github.sha }}
 
       - name: Configure AWS Credentials
-        if: ${{ runner.os == 'Linux' }} #TODO: Add back the check for push event
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -53,13 +53,13 @@ jobs:
           aws-region: us-east-1
 
       - name: Download package signing GPG secret key
-        if: ${{ runner.os == 'Linux' }}
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         run: |
           aws secretsmanager get-secret-value --region us-east-1 --secret-id "XRayDaemonSecrets" | jq -r ".SecretString" > aws-xray-secret.gpg
           md5sum aws-xray-secret.gpg
 
       - name: Import signing GPG key
-        if: ${{ runner.os == 'Linux' }}
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         run: |
           gpg --import aws-xray-secret.gpg
           gpg --list-keys
@@ -68,11 +68,11 @@ jobs:
           shred -fuvz aws-xray-secret.gpg
 
       - name: Sign daemon packages
-        if: ${{ runner.os == 'Linux' }}
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         run: ./Tool/src/packaging/sign-packages.sh
 
       - name: Remove Package Signing GPG Key from local GPG Key Ring
-        if: ${{ runner.os == 'Linux' }}
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         run: |
           gpg --fingerprint --with-colons aws-xray@amazon.com | grep -m 1 "fpr" | sed -n 's/^fpr:::::::::\([[:alnum:]]\+\):/\1/p' | xargs gpg --batch --yes --delete-secret-keys
           gpg --list-secret-keys
