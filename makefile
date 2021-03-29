@@ -85,7 +85,7 @@ package-rpm:
 
 .PHONY: major-version-packages
 major-version-packages:
-	$(BGO_SPACE)/Tools/src/packaging/major-version-packages.sh ${VERSION}
+	$(BGO_SPACE)/Tool/src/packaging/major-version-packages.sh ${VERSION}
 
 # This will be removed in the next major version release
 .PHONY: build-package-legacy
