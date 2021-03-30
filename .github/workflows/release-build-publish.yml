@@ -8,7 +8,7 @@ on:
 
 jobs:
   build_publish_daemon_image:
-    name: Build and Publish X-Ray daemon docker image to docker hub and public ECR
+    name: Build X-Ray daemon artifacts and publish docker image to docker hub and public ECR
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -32,16 +32,9 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
 
       - name: Build linux archives
-        if: ${{ runner.os == 'Linux' }}
         run: make packaging
         env:
           VERSION: ${{ github.event.inputs.version }}
-
-      - name: Upload archives as actions artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: distributions
-          path: build/dist/
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -49,6 +42,34 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
+
+      - name: Download package signing GPG secret key
+        run: |
+          aws secretsmanager get-secret-value --region us-east-1 --secret-id "XRayDaemonSecrets" | jq -r ".SecretString" > aws-xray-secret.gpg
+          md5sum aws-xray-secret.gpg
+
+      - name: Import signing GPG key
+        run: |
+          gpg --import aws-xray-secret.gpg
+          gpg --list-keys
+          gpg --armor --export -a "aws-xray@amazon.com" > aws-xray-public.gpg
+          rpm --import aws-xray-public.gpg
+          shred -fuvz aws-xray-secret.gpg
+          shred -fuvz aws-xray-public.gpg
+
+      - name: Sign daemon packages
+        run: ./Tool/src/packaging/sign-packages.sh
+
+      - name: Remove Package Signing GPG Key from local GPG Key Ring
+        run: |
+          gpg --fingerprint --with-colons aws-xray@amazon.com | grep -m 1 "fpr" | sed -n 's/^fpr:::::::::\([[:alnum:]]\+\):/\1/p' | xargs gpg --batch --yes --delete-secret-keys
+          gpg --list-secret-keys
+
+      - name: Upload archives as actions artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: distributions
+          path: build/dist/
 
       - name: Login to Public ECR
         uses: docker/login-action@v1
