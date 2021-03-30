@@ -66,6 +66,7 @@ jobs:
           gpg --armor --export -a "aws-xray@amazon.com" > aws-xray-public.gpg
           rpm --import aws-xray-public.gpg
           shred -fuvz aws-xray-secret.gpg
+          shred -fuvz aws-xray-public.gpg
 
       - name: Sign daemon packages
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
