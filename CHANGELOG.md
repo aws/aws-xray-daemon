@@ -1,6 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.0
+- Support for fetching region from ECS metadata [PR #41](https://github.com/aws/aws-xray-daemon/pull/41)
+- Added license and third party licenses to all the packages [PR #46](https://github.com/aws/aws-xray-daemon/pull/46)
+- Set hostname and instance-id when EC2 metadata is blocked [PR #54](https://github.com/aws/aws-xray-daemon/pull/54)
+- Prevent leaking customer traces at default log level [PR #61](https://github.com/aws/aws-xray-daemon/pull/61)
+- Do not print successfully if there are Unprocessed segments [PR #64](https://github.com/aws/aws-xray-daemon/pull/64)
+- Reduce debug logging causing log flooding [PR #65](https://github.com/aws/aws-xray-daemon/pull/65)
+- Debug logging print only unprocessed segments detail [PR #66](https://github.com/aws/aws-xray-daemon/pull/66)
+- Change linux service type from `simple` to `exec` [PR #98](https://github.com/aws/aws-xray-daemon/pull/98)
+- Log traceId for unprocessed segments [PR #106](https://github.com/aws/aws-xray-daemon/pull/106)
+
 ## 3.2.0 (2019-11-26)
 - Do not fail when cleaning build folder
 - Bumping up aws-sdk-go to enable IAM Roles for Service Account support in Kubernetes deployments
