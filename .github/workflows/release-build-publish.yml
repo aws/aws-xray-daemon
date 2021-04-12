@@ -116,6 +116,6 @@ jobs:
         with:
           tag_name: 'v${{ github.event.inputs.version }}'
           release_name: 'AWS X-Ray daemon update v${{ github.event.inputs.version }}'
-          body: 'Please refer [change-log](https://github.com/aws/aws-xray-sdk-go/blob/master/CHANGELOG.md) for more details'
+          body: 'Please refer [change-log](https://github.com/aws/aws-xray-daemon/blob/master/CHANGELOG.md) for more details'
           draft: true
           prerelease: false
