@@ -41,6 +41,8 @@ func (c *MockXRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*x
 	if errorStr == "Send unprocessed" {
 		segmentID := "Test-Segment-Id-1242113"
 		output.UnprocessedTraceSegments = append(output.UnprocessedTraceSegments, &xray.UnprocessedTraceSegment{Id: &segmentID})
+	} else if errorStr == "Send Invalid" {
+		output.UnprocessedTraceSegments = append(output.UnprocessedTraceSegments, &xray.UnprocessedTraceSegment{Id: nil})
 	} else if errorStr != "" {
 		err = errors.New(errorStr)
 	}
@@ -110,7 +112,7 @@ func TestPollSendSuccess(t *testing.T) {
 	assert.True(t, strings.Contains(log.Logs[1], doneMsg))
 }
 
-func TestPoolSendFailedOnceMoreThanMin(t *testing.T) {
+func TestPollSendFailedOnceMoreThanMin(t *testing.T) {
 	seed := int64(122321)
 	randGen := rand.New(rand.NewSource(seed))
 	timer := test.MockTimerClient{}
@@ -150,7 +152,7 @@ func TestPoolSendFailedOnceMoreThanMin(t *testing.T) {
 	assert.True(t, strings.Contains(log.Logs[len(log.Logs)-1], doneMsg))
 }
 
-func TestPoolSendFailedTwiceMoreThanMin(t *testing.T) {
+func TestPollSendFailedTwiceMoreThanMin(t *testing.T) {
 	seed := int64(122321)
 	randGen := rand.New(rand.NewSource(seed))
 	timer := test.MockTimerClient{}
@@ -198,7 +200,7 @@ func TestPoolSendFailedTwiceMoreThanMin(t *testing.T) {
 	assert.True(t, strings.Contains(log.Logs[len(log.Logs)-1], doneMsg))
 }
 
-func TestPoolSendFailedTwiceAndSucceedThird(t *testing.T) {
+func TestPollSendFailedTwiceAndSucceedThird(t *testing.T) {
 	seed := int64(122321)
 	randGen := rand.New(rand.NewSource(seed))
 	timer := test.MockTimerClient{}
@@ -291,7 +293,7 @@ func TestPutTraceSegmentsParameters(t *testing.T) {
 	assert.True(t, strings.Contains(log.Logs[1], doneMsg))
 }
 
-func TestPoolSendReturnUnprocessed(t *testing.T) {
+func TestPollSendReturnUnprocessed(t *testing.T) {
 	log := test.LogSetup()
 	xRay := new(MockXRayClient)
 	xRay.On("PutTraceSegments", nil).Return("Send unprocessed").Once()
@@ -309,8 +311,30 @@ func TestPoolSendReturnUnprocessed(t *testing.T) {
 	<-s.done
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, 1)
-	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Sent batch of %v segments but had %v Unprocessed segments", 1, 1)) )
+	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Sent batch of %v segments but had %v Unprocessed segments", 1, 1)))
 	assert.True(t, strings.Contains(log.Logs[1], "Unprocessed segment"))
+}
+
+func TestPollSendReturnUnprocessedInvalid(t *testing.T) {
+	log := test.LogSetup()
+	xRay := new(MockXRayClient)
+	xRay.On("PutTraceSegments", nil).Return("Send Invalid").Once()
+	s := segmentsBatch{
+		batches: make(chan []*string, 1),
+		xRay:    xRay,
+		done:    make(chan bool),
+	}
+	testMessage := "{\"id\":\"9472\""
+	batch := []*string{&testMessage}
+	s.send(batch)
+
+	go s.poll()
+	close(s.batches)
+	<-s.done
+
+	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, 1)
+	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Sent batch of %v segments but had %v Unprocessed segments", 1, 1)))
+	assert.True(t, strings.Contains(log.Logs[1], "Received invalid unprocessed segment id from X-Ray"))
 }
 
 type minTestCase struct {

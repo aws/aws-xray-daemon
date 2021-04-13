@@ -101,13 +101,19 @@ func (s *segmentsBatch) poll() {
 				for i := 0; i < len(batch); i++ {
 					segIdStrs := segIdRegexp.FindStringSubmatch(*batch[i])
 					if len(segIdStrs) != 2 {
-						log.Debugf("Failed to match \"id\" in segment: ", *batch[i])
+						log.Debugf("Failed to match \"id\" in segment: %v", *batch[i])
 						continue
 					}
 					batchesMap[segIdStrs[1]] = *batch[i]
 				}
 				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 					telemetry.T.SegmentRejected(1)
+					// Print all segments since don't know which exact one is invalid.
+					if unprocessedSegment.Id == nil {
+						log.Debugf("Received invalid unprocessed segment id from X-Ray: %v", unprocessedSegment)
+						log.Debugf("Content in this batch: %v", params)
+						break
+					}
 					traceIdStrs := traceIdRegexp.FindStringSubmatch(batchesMap[*unprocessedSegment.Id])
 					if len(traceIdStrs) != 2 {
 						log.Errorf("Unprocessed segment: %v", unprocessedSegment)

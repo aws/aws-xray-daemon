@@ -19,11 +19,11 @@ import (
 	"github.com/aws/aws-xray-daemon/pkg/ringbuffer"
 	"github.com/aws/aws-xray-daemon/pkg/tracesegment"
 
-	"math/rand"
-	"os"
 	"github.com/aws/aws-xray-daemon/pkg/cfg"
 	"github.com/aws/aws-xray-daemon/pkg/conn"
 	"github.com/aws/aws-xray-daemon/pkg/util/timer"
+	"math/rand"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
