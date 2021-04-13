@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.1
+- Fix nil pointer dereference when the daemon receives an invalid message [PR #122](https://github.com/aws/aws-xray-daemon/pull/122)
+
 ## 3.3.0
 - Support for fetching region from ECS metadata [PR #41](https://github.com/aws/aws-xray-daemon/pull/41)
 - Added license and third party licenses to all the packages [PR #46](https://github.com/aws/aws-xray-daemon/pull/46)
