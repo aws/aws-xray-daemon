@@ -334,7 +334,7 @@ func TestPollSendReturnUnprocessedInvalid(t *testing.T) {
 
 	assert.EqualValues(t, xRay.CallNoToPutTraceSegments, 1)
 	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Sent batch of %v segments but had %v Unprocessed segments", 1, 1)))
-	assert.True(t, strings.Contains(log.Logs[1], "Received invalid unprocessed segment id from X-Ray"))
+	assert.True(t, strings.Contains(log.Logs[1], "Received nil unprocessed segment id from X-Ray service"))
 }
 
 type minTestCase struct {

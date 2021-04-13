@@ -110,7 +110,7 @@ func (s *segmentsBatch) poll() {
 					telemetry.T.SegmentRejected(1)
 					// Print all segments since don't know which exact one is invalid.
 					if unprocessedSegment.Id == nil {
-						log.Debugf("Received invalid unprocessed segment id from X-Ray: %v", unprocessedSegment)
+						log.Debugf("Received nil unprocessed segment id from X-Ray service: %v", unprocessedSegment)
 						log.Debugf("Content in this batch: %v", params)
 						break
 					}
