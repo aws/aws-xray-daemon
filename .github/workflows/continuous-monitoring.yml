@@ -8,6 +8,8 @@ jobs:
     name: Monitor public ECR
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -35,8 +37,14 @@ jobs:
 
       - name: Run daemon image
         run: |
-          docker run --name xray-daemon public.ecr.aws/xray/aws-xray-daemon:latest -o -n us-west-2 &
+          docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -p 0.0.0.0:2000:2000/udp --name xray-daemon public.ecr.aws/xray/aws-xray-daemon:latest -o -n us-west-2 -b 0.0.0.0:2000 &
           sleep 30
+
+      - name: Send invalid traffic
+        run: |
+          python3 Tool/src/integration/invalid_input.py
+          sleep 10
+          docker stats --no-stream
 
       - name: Publish metrics on daemon startup
         if: ${{ always() }}
@@ -51,6 +59,8 @@ jobs:
     name: Monitor docker hub
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -73,8 +83,14 @@ jobs:
 
       - name: Run daemon image
         run: |
-          docker run --name xray-daemon amazon/aws-xray-daemon:latest -o -n us-west-2 &
+          docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -p 0.0.0.0:2000:2000/udp --name xray-daemon amazon/aws-xray-daemon:latest -o -n us-west-2 -b 0.0.0.0:2000 &
           sleep 30
+
+      - name: Send invalid traffic
+        run: |
+          python3 Tool/src/integration/invalid_input.py
+          sleep 10
+          docker stats --no-stream
 
       - name: Publish metrics on daemon startup
         if: ${{ always() }}
