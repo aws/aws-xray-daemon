@@ -122,3 +122,24 @@ jobs:
             public.ecr.aws/xray/aws-xray-daemon:alpha
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Pull alpha image from ECR
+        id: pull-from-ecr
+        run: docker pull public.ecr.aws/xray/aws-xray-daemon:alpha
+
+      - name: Run daemon image
+        run: |
+          docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -p 0.0.0.0:2000:2000/udp --name xray-daemon public.ecr.aws/xray/aws-xray-daemon:alpha -o -n us-east-1 -b 0.0.0.0:2000 &
+          sleep 30
+
+      - name: Send invalid traffic
+        run: |
+          python3 Tool/src/integration/invalid_input.py
+          sleep 10
+          docker stats --no-stream
+
+      - name: Check container status
+        run: |
+          if [[ "$(docker container inspect -f '{{.State.Status}}' xray-daemon )" != "running" ]]; then
+            exit 1
+          fi
