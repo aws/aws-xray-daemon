@@ -52,6 +52,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Verify Daemon binary
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
+        run: |
+          build/xray-linux-amd64/xray -o -l dev &
+          sleep 10
+          echo -e '{"format":"json","version":1}\nx' | nc -w 1 -u 127.0.0.1 2000
+          sleep 10
+          ProcNumber=$(ps -ef |grep -w xray|grep -v grep|wc -l)
+          echo $ProcNumber
+          if [[ $PROCESS_NUM eq 0 ]]; then
+            exit 1
+          fi
+
       - name: Download package signing GPG secret key
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
         run: |
