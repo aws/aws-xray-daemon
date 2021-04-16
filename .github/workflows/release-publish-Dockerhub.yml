@@ -29,6 +29,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Build and test
+        run: make build test
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
