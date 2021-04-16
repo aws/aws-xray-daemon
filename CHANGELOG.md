@@ -1,11 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 3.3.1
+## 3.3.1 (2021-04-13)
 - Fix nil pointer dereference when the daemon receives an invalid message [PR #122](https://github.com/aws/aws-xray-daemon/pull/122)
 
-## 3.3.0
+## 3.3.0 (2021-04-13)
 - Support for fetching region from ECS metadata [PR #41](https://github.com/aws/aws-xray-daemon/pull/41)
+- Building X-Ray Daemon docker image from `scratch` instead of from `amazonlinux` as done previously [PR #44](https://github.com/aws/aws-xray-daemon/pull/44)
 - Added license and third party licenses to all the packages [PR #46](https://github.com/aws/aws-xray-daemon/pull/46)
 - Set hostname and instance-id when EC2 metadata is blocked [PR #54](https://github.com/aws/aws-xray-daemon/pull/54)
 - Prevent leaking customer traces at default log level [PR #61](https://github.com/aws/aws-xray-daemon/pull/61)
