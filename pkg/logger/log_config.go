@@ -32,7 +32,7 @@ func LoadLogConfig(writer io.Writer, c *cfg.Config, loglevel string) {
 	case "error":
 		level = log.ErrorLvl
 	case "prod":
-		level = log.WarnLvl
+		level = log.InfoLvl
 	}
 
 	if loglevel != c.Logging.LogLevel {
