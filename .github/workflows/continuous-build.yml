@@ -61,7 +61,7 @@ jobs:
           sleep 10
           ProcNumber=$(ps -ef |grep -w xray|grep -v grep|wc -l)
           echo $ProcNumber
-          if [[ $ProcNumber==0 ]]; then
+          if [[ $ProcNumber == 0 ]]; then
             exit 1
           fi
 
