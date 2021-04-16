@@ -5,6 +5,9 @@ on:
       version:
         description: The version to tag the release with, e.g., 1.2.0, 1.2.1-alpha.1
         required: true
+      major_version:
+        description: The major version to tag the release with, e.g., 1.x, 2.x, 3.x
+        required: true
 
 jobs:
   build_publish_daemon_image:
@@ -101,9 +104,10 @@ jobs:
           tags: |
             amazon/aws-xray-daemon:${{ github.event.inputs.version }}
             amazon/aws-xray-daemon:latest
-            amazon/aws-xray-daemon:3.x
+            amazon/aws-xray-daemon:${{ github.event.inputs.major_version }}
             public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.version }}
             public.ecr.aws/xray/aws-xray-daemon:latest
+            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.major_version }}
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
