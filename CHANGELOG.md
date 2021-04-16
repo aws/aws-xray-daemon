@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.2 (2021-04-16)
+- Fix Daemon startup log missing, set default log level as Info [PR #129](https://github.com/aws/aws-xray-daemon/pull/129)
+- Rollback Dockerhub image base to AmazonLinux [PR #130](https://github.com/aws/aws-xray-daemon/pull/130)
+
 ## 3.3.1 (2021-04-13)
 - Fix nil pointer dereference when the daemon receives an invalid message [PR #122](https://github.com/aws/aws-xray-daemon/pull/122)
 
