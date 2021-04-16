@@ -5,6 +5,9 @@ on:
       version:
         description: The version to tag the release with, e.g., 1.2.0, 1.2.1-alpha.1
         required: true
+      major_version:
+        description: The major version to tag the release with, e.g., 1.x, 2.x, 3.x
+        required: true
 
 jobs:
   build_publish_daemon_image:
@@ -93,17 +96,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      - name: Build docker image
+      - name: Build docker image for Public ECR
         uses: docker/build-push-action@v2
         with:
           context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.version }}
+            public.ecr.aws/xray/aws-xray-daemon:latest
+            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.major_version }}
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Build docker image for DockerHub
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile.amazonlinux
           platforms: linux/amd64,linux/arm64
           tags: |
             amazon/aws-xray-daemon:${{ github.event.inputs.version }}
             amazon/aws-xray-daemon:latest
-            amazon/aws-xray-daemon:3.x
-            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.version }}
-            public.ecr.aws/xray/aws-xray-daemon:latest
+            amazon/aws-xray-daemon:${{ github.event.inputs.major_version }}
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
