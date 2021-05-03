@@ -37,7 +37,6 @@ echo "Package: xray" > ${BGO_SPACE}/bin/debian_${ARCH}/debian/control
 echo "Architecture: ${ARCH}" >> ${BGO_SPACE}/bin/debian_${ARCH}/debian/control
 echo -n "Version: " >> ${BGO_SPACE}/bin/debian_${ARCH}/debian/control
 echo $VERSION >> ${BGO_SPACE}/bin/debian_${ARCH}/debian/control
-echo "-1" >> ${BGO_SPACE}/bin/debian_${ARCH}/debian/control
 cat ${BGO_SPACE}/Tool/src/packaging/debian/control >> ${BGO_SPACE}/bin/debian_${ARCH}/debian/control
 
 echo "Constructing the copyright file"

@@ -13,7 +13,7 @@ path := $(BGO_SPACE):$(WORKSPACE)
 
 build: create-folder copy-file build-mac-amd64 build-mac-arm64 build-linux-amd64 build-linux-arm64 build-windows
 
-packaging: zip-linux zip-osx zip-win package-rpm package-deb build-package-legacy
+packaging: zip-linux zip-osx zip-win package-rpm package-deb major-version-packages build-package-legacy
 
 release: build test packaging clean-folder
 
@@ -82,6 +82,10 @@ package-deb:
 package-rpm:
 	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh amd64
 	$(BGO_SPACE)/Tool/src/packaging/linux/build_rpm_linux.sh arm64
+
+.PHONY: major-version-packages
+major-version-packages:
+	$(BGO_SPACE)/Tool/src/packaging/major-version-packages.sh ${VERSION}
 
 # This will be removed in the next major version release
 .PHONY: build-package-legacy

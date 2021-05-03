@@ -43,13 +43,6 @@ jobs:
         run: make packaging
         env:
           VERSION: ${{ github.sha }}
-      
-      - name: Upload archives as actions artifact
-        if: ${{ runner.os == 'Linux' }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: distributions
-          path: build/dist/
 
       - name: Configure AWS Credentials
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
@@ -58,6 +51,52 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
+
+      - name: Verify Daemon binary
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
+        run: |
+          build/xray-linux-amd64/xray -o -l dev &
+          sleep 10
+          echo -e '{"format":"json","version":1}\nx' | nc -w 1 -u 127.0.0.1 2000
+          sleep 10
+          ProcNumber=$(ps -ef |grep -w xray|grep -v grep|wc -l)
+          echo $ProcNumber
+          if [[ $ProcNumber == 0 ]]; then
+            exit 1
+          fi
+
+      - name: Download package signing GPG secret key
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
+        run: |
+          aws secretsmanager get-secret-value --region us-east-1 --secret-id "XRayDaemonSecrets" | jq -r ".SecretString" > aws-xray-secret.gpg
+          md5sum aws-xray-secret.gpg
+
+      - name: Import signing GPG key
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
+        run: |
+          gpg --import aws-xray-secret.gpg
+          gpg --list-keys
+          gpg --armor --export -a "aws-xray@amazon.com" > aws-xray-public.gpg
+          rpm --import aws-xray-public.gpg
+          shred -fuvz aws-xray-secret.gpg
+          shred -fuvz aws-xray-public.gpg
+
+      - name: Sign daemon packages
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
+        run: ./Tool/src/packaging/sign-packages.sh
+
+      - name: Remove Package Signing GPG Key from local GPG Key Ring
+        if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
+        run: |
+          gpg --fingerprint --with-colons aws-xray@amazon.com | grep -m 1 "fpr" | sed -n 's/^fpr:::::::::\([[:alnum:]]\+\):/\1/p' | xargs gpg --batch --yes --delete-secret-keys
+          gpg --list-secret-keys
+      
+      - name: Upload archives as actions artifact
+        if: ${{ runner.os == 'Linux' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: distributions
+          path: build/dist/
 
       - name: Login to Public ECR
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
@@ -84,15 +123,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
-      - name: Build docker image
+      - name: Build docker image for public ECR
         if: ${{ runner.os == 'Linux' }}
         uses: docker/build-push-action@v2
         with:
           context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            public.ecr.aws/xray/aws-xray-daemon:alpha
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Build docker image for DockerHub
+        if: ${{ runner.os == 'Linux' }}
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile.amazonlinux
           push: ${{ github.event_name == 'push' }}
           platforms: linux/amd64,linux/arm64
           tags: |
             amazon/aws-xray-daemon:alpha
-            public.ecr.aws/xray/aws-xray-daemon:alpha
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
