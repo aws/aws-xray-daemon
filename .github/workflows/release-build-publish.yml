@@ -23,7 +23,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # check name should be the name of the integration test job
-          checkName: Build on ubuntu-latest
+          checkName: Build on macos-latest
           ref: ${{ github.event.inputs.latest_commit_id }}
           timeoutSeconds: 60
 
