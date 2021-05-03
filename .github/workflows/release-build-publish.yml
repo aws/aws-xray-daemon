@@ -175,8 +175,9 @@ jobs:
           aws-region: us-east-1
 
       - name: debug
-        run: ls
-        working-directory: upload_ready_binaries
+        run: |
+          ls
+          ls upload_ready_binaries
 
 #      - name: Upload packaged binaries to staging s3 bucket
 #        uses: actions/upload-artifact@v2
