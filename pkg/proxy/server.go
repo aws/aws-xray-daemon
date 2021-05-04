@@ -131,12 +131,18 @@ func consume(body io.ReadCloser) (io.ReadSeeker, error) {
 // Serve starts server.
 func (s *Server) Serve() {
 	log.Infof("Starting proxy http server on %s", s.Addr)
-	s.ListenAndServe()
+	err := s.ListenAndServe()
+	if err != nil {
+		log.Errorf("unable to start the server: %v", err)
+	}
 }
 
 // Close stops server.
 func (s *Server) Close() {
-	s.Server.Close()
+	err := s.Server.Close()
+	if err != nil {
+		log.Errorf("unable to close the server: %v", err)
+	}
 }
 
 // getServiceEndpoint returns X-Ray service endpoint.
@@ -148,6 +154,10 @@ func getServiceEndpoint(awsCfg *aws.Config) (string, error) {
 			return "", errors.New("unable to generate endpoint from region with nil value")
 		}
 		resolved, err := endpoints.DefaultResolver().EndpointFor(service, *awsCfg.Region, setResolverConfig())
+		if err != nil {
+			return "", err
+		}
+
 		return resolved.URL, err
 	}
 	return *awsCfg.Endpoint, nil

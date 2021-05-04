@@ -48,5 +48,8 @@ func (conn UDP) Read(b []byte) (int, error) {
 
 // Close closes current UDP connection.
 func (conn UDP) Close() {
-	conn.socket.Close()
+	err := conn.socket.Close()
+	if err != nil {
+		log.Errorf("unable to close the UDP connection: %v", err)
+	}
 }
