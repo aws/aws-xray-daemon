@@ -179,8 +179,5 @@ jobs:
           ls
           ls upload_ready_binaries
 
-#      - name: Upload packaged binaries to staging s3 bucket
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: packaged_signed_distributions
-#          path: packaged_binaries
+      - name: Upload packaged binaries to staging s3 bucket
+        run: s3_bucket_name=aws-xray-daemon-assets.staging release_version=3.3.0 major_version=3.x bash Tool/src/publish-s3.sh
