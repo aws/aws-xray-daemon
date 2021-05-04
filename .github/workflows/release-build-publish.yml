@@ -22,7 +22,7 @@ jobs:
         id: wait-for-build
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # check name should be the name of the integration test job
+          # ToDO: check name should be the name of the integration test job once we set up CI workflow
           checkName: Build on macos-latest
           ref: ${{ github.event.inputs.latest_commit_id }}
           timeoutSeconds: 60
@@ -91,67 +91,67 @@ jobs:
           name: distributions
           path: build/dist/
 
-#      - name: Login to Public ECR
-#        uses: docker/login-action@v1
-#        with:
-#          registry: public.ecr.aws
-#
-#      - name: Login to DockerHub
-#        uses: docker/login-action@v1
-#        with:
-#          username: ${{ secrets.DOCKER_USER }}
-#          password: ${{ secrets.DOCKER_PASS }}
-#
-#      - name: Set up Docker Buildx
-#        uses: docker/setup-buildx-action@v1
-#
-#      - name: Cache Docker layers
-#        uses: actions/cache@v2
-#        with:
-#          path: /tmp/.buildx-cache
-#          key: ${{ runner.os }}-buildx-${{ github.sha }}
-#          restore-keys: |
-#            ${{ runner.os }}-buildx-
-#
-#      - name: Build docker image for Public ECR
-#        uses: docker/build-push-action@v2
-#        with:
-#          context: .
-#          file: ./Dockerfile
-#          platforms: linux/amd64,linux/arm64
-#          tags: |
-#            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.version }}
-#            public.ecr.aws/xray/aws-xray-daemon:latest
-#            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.major_version }}
-#          push: true
-#          cache-from: type=local,src=/tmp/.buildx-cache
-#          cache-to: type=local,dest=/tmp/.buildx-cache
-#
-#      - name: Build docker image for DockerHub
-#        uses: docker/build-push-action@v2
-#        with:
-#          context: .
-#          file: ./Dockerfile.amazonlinux
-#          platforms: linux/amd64,linux/arm64
-#          tags: |
-#            amazon/aws-xray-daemon:${{ github.event.inputs.version }}
-#            amazon/aws-xray-daemon:latest
-#            amazon/aws-xray-daemon:${{ github.event.inputs.major_version }}
-#          push: true
-#          cache-from: type=local,src=/tmp/.buildx-cache
-#          cache-to: type=local,dest=/tmp/.buildx-cache
-#
-#      - name: Create Release
-#        id: create_release
-#        uses: actions/create-release@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          tag_name: 'v${{ github.event.inputs.version }}'
-#          release_name: 'AWS X-Ray daemon update v${{ github.event.inputs.version }}'
-#          body: 'Please refer [change-log](https://github.com/aws/aws-xray-daemon/blob/master/CHANGELOG.md) for more details'
-#          draft: true
-#          prerelease: false
+      - name: Login to Public ECR
+        uses: docker/login-action@v1
+        with:
+          registry: public.ecr.aws
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build docker image for Public ECR
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.version }}
+            public.ecr.aws/xray/aws-xray-daemon:latest
+            public.ecr.aws/xray/aws-xray-daemon:${{ github.event.inputs.major_version }}
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Build docker image for DockerHub
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile.amazonlinux
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            amazon/aws-xray-daemon:${{ github.event.inputs.version }}
+            amazon/aws-xray-daemon:latest
+            amazon/aws-xray-daemon:${{ github.event.inputs.major_version }}
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: 'v${{ github.event.inputs.version }}'
+          release_name: 'AWS X-Ray daemon update v${{ github.event.inputs.version }}'
+          body: 'Please refer [change-log](https://github.com/aws/aws-xray-daemon/blob/master/CHANGELOG.md) for more details'
+          draft: true
+          prerelease: false
 
   publish_to_s3:
     name: Publish X-Ray daemon binaries to staging s3 bucket
@@ -175,4 +175,4 @@ jobs:
           aws-region: us-east-1
 
       - name: Upload packaged binaries to staging s3 bucket
-        run: s3_bucket_name=aws-xray-daemon-assets.staging release_version=3.3.0 major_version=3.x bash Tool/src/publish-s3.sh
+        run: s3_bucket_name=aws-xray-assets.staging release_version=${{ github.event.inputs.version }} major_version=${{ github.event.inputs.major_version }} bash Tool/src/publish-s3.sh

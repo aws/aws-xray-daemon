@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-      - release_workflow_CI_verification
   pull_request:
     branches:
       - master
