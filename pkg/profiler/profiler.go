@@ -38,7 +38,10 @@ func MemSnapShot(memProfile *string) {
 		if err := pprof.WriteHeapProfile(f); err != nil {
 			log.Errorf("Could not write memory profile: %v", err)
 		}
-		f.Close()
+		err = f.Close()
+		if err != nil {
+			log.Errorf("unable to close file: %v", err)
+		}
 		log.Info("Finish memory profiling")
 		return
 	}

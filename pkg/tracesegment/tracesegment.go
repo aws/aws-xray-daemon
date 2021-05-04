@@ -12,6 +12,7 @@ package tracesegment
 import (
 	"bytes"
 	"compress/zlib"
+	log "github.com/cihub/seelog"
 	"strings"
 )
 
@@ -38,8 +39,16 @@ func (r *TraceSegment) Deflate() []byte {
 
 	w := zlib.NewWriter(&b)
 	rawBytes := *r.Raw
-	w.Write(rawBytes)
-	w.Close()
+
+	_, err := w.Write(rawBytes)
+	if err != nil {
+		log.Errorf("%v", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		log.Errorf("%v", err)
+	}
 
 	return b.Bytes()
 }
