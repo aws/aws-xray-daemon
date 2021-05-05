@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/aws/aws-xray-daemon.svg?branch=master)](https://travis-ci.org/aws/aws-xray-daemon)
+[![Go Report Card](https://goreportcard.com/badge/github.com/aws/aws-xray-daemon)](https://goreportcard.com/report/github.com/aws/aws-xray-daemon)
 
 # AWS X-Ray Daemon  
 
