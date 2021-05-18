@@ -1,7 +1,8 @@
 name: Continuous Monitoring of Dockerhub and public ECR
 on:
+  workflow_dispatch:
   schedule:
-    - cron:  '0 */1 * * *'
+    - cron:  '*/30 * * * *'
 
 jobs:
   monitor-ecr:
