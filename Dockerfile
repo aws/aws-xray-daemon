@@ -17,10 +17,6 @@ COPY --from=build-env /workspace/xray .
 COPY --from=build-env /etc/passwd /etc/passwd
 COPY --from=build-env /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY pkg/cfg.yaml /etc/amazon/xray/cfg.yaml
-
-RUN mkdir -p /usr/bin/
-RUN ln -s /xray /usr/bin/xray
-
 USER xray
 ENTRYPOINT ["/xray", "-t", "0.0.0.0:2000", "-b", "0.0.0.0:2000"]
 EXPOSE 2000/udp
