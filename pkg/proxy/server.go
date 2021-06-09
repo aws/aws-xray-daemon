@@ -133,7 +133,7 @@ func (s *Server) Serve() {
 	log.Infof("Starting proxy http server on %s", s.Addr)
 	err := s.ListenAndServe()
 	if err != nil {
-		log.Errorf("unable to start the server: %v", err)
+		log.Infof("proxy http server has stopped listening: %v", err)
 	}
 }
 
