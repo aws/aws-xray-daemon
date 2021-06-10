@@ -131,9 +131,8 @@ func consume(body io.ReadCloser) (io.ReadSeeker, error) {
 // Serve starts server.
 func (s *Server) Serve() {
 	log.Infof("Starting proxy http server on %s", s.Addr)
-	err := s.ListenAndServe()
-	if err != nil {
-		log.Infof("proxy http server has stopped listening: %v", err)
+	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Errorf("proxy http server failed to listen: %v", err)
 	}
 }
 
