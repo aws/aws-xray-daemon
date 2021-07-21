@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 ## 3.3.3 (2021-07-21)
 - Add logging for ignored errors [PR #138](https://github.com/aws/aws-xray-daemon/pull/138)
 - Upgrade minimum golang version for compiling to 1.16.6 [PR #148](https://github.com/aws/aws-xray-daemon/pull/148)
+- Upgrade golang `net` and `sys` libraries [PR #150](https://github.com/aws/aws-xray-daemon/pull/150)
 
 ## 3.3.2 (2021-04-16)
 - Fix Daemon startup log missing, set default log level as Info [PR #129](https://github.com/aws/aws-xray-daemon/pull/129)
