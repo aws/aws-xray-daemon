@@ -8,12 +8,29 @@ on:
       major_version:
         description: The major version to tag the release with, e.g., 1.x, 2.x, 3.x
         required: true
+      latest_commit_id:
+        description: Latest commit id of the repository (usually commit id of the release commit)
+        required: true
 
 jobs:
   build_publish_daemon_image:
     name: Build X-Ray daemon artifacts and publish docker image to docker hub and public ECR
     runs-on: ubuntu-latest
     steps:
+      - name: Validate CI job has passed
+        uses: fountainhead/action-wait-for-check@v1.0.0
+        id: wait-for-build
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # ToDO: check name should be the name of the integration test job once we set up CI workflow
+          checkName: Build on macos-latest
+          ref: ${{ github.event.inputs.latest_commit_id }}
+          timeoutSeconds: 60
+
+      - name: Fail CD job if CI job is not passed
+        if: steps.wait-for-build.outputs.conclusion == 'failure' || steps.wait-for-build.outputs.conclusion == 'timed_out'
+        run: exit 1
+
       - name: Checkout Repository
         uses: actions/checkout@v2
 
@@ -135,3 +152,27 @@ jobs:
           body: 'Please refer [change-log](https://github.com/aws/aws-xray-daemon/blob/master/CHANGELOG.md) for more details'
           draft: true
           prerelease: false
+
+  publish_to_s3:
+    name: Publish X-Ray daemon binaries to staging s3 bucket
+    needs: build_publish_daemon_image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Download daemon artifacts from Github
+        uses: actions/download-artifact@v2
+        with:
+          name: distributions
+          path: upload_ready_binaries
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Upload packaged binaries to staging s3 bucket
+        run: s3_bucket_name=aws-xray-assets.staging release_version=${{ github.event.inputs.version }} major_version=${{ github.event.inputs.major_version }} bash Tool/src/publish-s3.sh
