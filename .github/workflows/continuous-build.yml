@@ -6,7 +6,9 @@ on:
   pull_request:
     branches:
       - master
-
+permissions:
+  id-token: write
+  contents: read
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -46,11 +48,14 @@ jobs:
 
       - name: Configure AWS Credentials
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+        run: |
+          export AWS_DEFAULT_REGION=us-east-1
+          export AWS_WEB_IDENTITY_TOKEN_FILE=/tmp/awscreds
+          export AWS_ROLE_ARN=${{ secrets.AWS_ASSUME_ROLE_ARN_RELEASE }}
+          echo AWS_ROLE_ARN=$AWS_ROLE_ARN >> $GITHUB_ENV
+          echo AWS_WEB_IDENTITY_TOKEN_FILE=$AWS_WEB_IDENTITY_TOKEN_FILE >> $GITHUB_ENV
+          echo AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION >> $GITHUB_ENV
+          curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value' > $AWS_WEB_IDENTITY_TOKEN_FILE
 
       - name: Verify Daemon binary
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
@@ -100,9 +105,7 @@ jobs:
 
       - name: Login to Public ECR
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
-        uses: docker/login-action@v1
-        with:
-          registry: public.ecr.aws
+        run: aws ecr-public get-login-password | docker login --username AWS --password-stdin public.ecr.aws
 
       - name: Login to DockerHub
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
