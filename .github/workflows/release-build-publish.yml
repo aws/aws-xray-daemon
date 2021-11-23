@@ -36,7 +36,7 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.version }}
 
-      - name: Build linux archives
+      - name: Build Linux archives
         run: make packaging
         env:
           VERSION: ${{ github.event.inputs.version }}
