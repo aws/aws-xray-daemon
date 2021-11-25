@@ -48,7 +48,7 @@ jobs:
 
       - name: Configure AWS Credentials
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
-        uses: aws-actions/configure-aws-credentials@master
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN_RELEASE }}
           aws-region: us-east-1
