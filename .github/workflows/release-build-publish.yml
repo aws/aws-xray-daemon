@@ -40,7 +40,7 @@ jobs:
         run: make packaging
         env:
           VERSION: ${{ github.event.inputs.version }}
-          
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
