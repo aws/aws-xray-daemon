@@ -10,7 +10,7 @@ on:
         required: true
 permissions:
   id-token: write
-  contents: read
+  contents: write
 jobs:
   build_publish_daemon_image:
     name: Build X-Ray daemon artifacts and publish docker image to docker hub and public ECR
