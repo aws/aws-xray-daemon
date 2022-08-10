@@ -1,5 +1,5 @@
 # build stage
-FROM --platform=$BUILDPLATFORM golang:1.15-alpine AS build-env
+FROM --platform=$BUILDPLATFORM golang:1.18-alpine AS build-env
 ARG TARGETPLATFORM
 
 RUN apk update && apk add ca-certificates
@@ -24,4 +24,3 @@ USER xray
 ENTRYPOINT ["/xray", "-t", "0.0.0.0:2000", "-b", "0.0.0.0:2000"]
 EXPOSE 2000/udp
 EXPOSE 2000/tcp
-
