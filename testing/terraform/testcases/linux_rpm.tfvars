@@ -1,0 +1,5 @@
+testing_ami = "redhat8"
+daemon_file_name = "aws-xray-daemon-3.x.rpm"
+daemon_install_command = "sudo rpm -Uvh aws-xray-daemon-3.x.rpm"
+daemon_start_command = "sudo /usr/bin/xray -a start"
+daemon_package_local_path = "../../distributions/aws-xray-daemon-3.x.rpm"
