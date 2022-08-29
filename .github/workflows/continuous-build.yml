@@ -38,13 +38,13 @@ jobs:
       - name: Build archives and test
         run: make build test
         env:
-          VERSION: ${{ github.sha }}
+          VERSION: 0.${{ github.sha }} # debian package requires version to start with a digit
       
       - name: Build linux archives
         if: ${{ runner.os == 'Linux' }}
         run: make packaging
         env:
-          VERSION: ${{ github.sha }}
+          VERSION: 0.${{ github.sha }} # debian package requires version to start with a digit
 
       - name: Configure AWS Credentials
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
@@ -147,3 +147,70 @@ jobs:
             amazon/aws-xray-daemon:alpha
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+  
+  test:
+    name: Integration testing
+    needs: [build]
+    runs-on: ubuntu-latest
+    strategy: 
+      fail-fast: false
+      matrix:
+        testcases:
+          - linux_deb
+          - linux_rpm
+          - linux_zip
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: distributions
+          path: distributions
+      
+      - name: Display structure of downloaded files
+        run: ls -R
+
+      - name: Set up terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.TESTING_ROLE_ARN }}
+          aws-region: us-west-2
+
+      - name: Generate trace data
+        id: traceData
+        run: |
+          sudo chmod +x ./testing/generate_trace_data.sh
+          ./testing/generate_trace_data.sh
+
+      - name: Run terraform and send trace data
+        run: |
+          cd testing/terraform
+          terraform init
+          terraform validate
+          terraform apply -auto-approve -var-file=./testcases/${{ matrix.testcases }}.tfvars
+
+      - name: Validate trace data
+        if: always()
+        run: |
+          echo "trace-id: ${{ env.TRACE_ID }}"
+          echo "sleeping for 60 seconds"
+          for i in {1..60}; do echo 'Sleeping...'$i && sleep 1; done
+          var=$(aws xray batch-get-traces --trace-ids ${{ env.TRACE_ID }} | jq -r '.Traces[0].Id')
+          if [[ $var == ${{ env.TRACE_ID }} ]]; then
+            echo "Found matching trace."
+          else
+            echo "Trace not found"
+            exit 1
+          fi
+
+      - name: Terraform destroy
+        if: always()
+        run: |
+          cd testing/terraform
+          terraform destroy -auto-approve
