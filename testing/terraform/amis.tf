@@ -39,7 +39,7 @@ variable "amis" {
     }
     redhat8 = {
       os_family          = "redhat"
-      ami_search_pattern = "RHEL-8.0.0_HVM*"
+      ami_search_pattern = "RHEL-8.6.0_HVM*"
       ami_owner          = "309956199498"
       ami_id             = "ami-087c2c50437d0b80d"
       ami_product_code   = []
