@@ -48,3 +48,19 @@ variable "amis" {
     }
   }
 }
+
+data "aws_ami" "ec2_ami" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = [var.amis[var.testing_ami]["ami_search_pattern"]]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = [var.amis[var.testing_ami]["ami_owner"]]
+}
