@@ -65,7 +65,7 @@ locals {
 }
 
 resource "aws_instance" "xray_daemon" {
-  ami                  = data.aws_ami.ec2_ami
+  ami                  = data.aws_ami.ec2_ami.id
   instance_type        = local.instance_type
   key_name             = local.ssh_key_name
   iam_instance_profile = local.ec2_instance_profile
