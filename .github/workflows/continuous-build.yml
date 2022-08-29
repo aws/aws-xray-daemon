@@ -182,11 +182,19 @@ jobs:
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v2
 
+      - name: Set AWS region value
+        id: setRegion
+        run: |
+          USER_INPUT=${{ github.event.inputs.region }}
+          # Use user input region or fall back to "us-west-2"
+          REGION=${USER_INPUT:-"us-west-2"}
+          echo "::set-output name=region::$REGION"
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.TESTING_ROLE_ARN }}
-          aws-region: ${{ inputs.region }}
+          aws-region: ${{ steps.setRegion.outputs.region }}
 
       - name: Generate trace data
         id: traceData
@@ -199,7 +207,7 @@ jobs:
           cd testing/terraform
           terraform init
           terraform validate
-          terraform apply -auto-approve -var-file=./testcases/${{ matrix.testcases }}.tfvars -var=aws_region=${{ inputs.region }}
+          terraform apply -auto-approve -var-file=./testcases/${{ matrix.testcases }}.tfvars -var=aws_region=${{ steps.setRegion.outputs.region }}
 
       - name: Validate trace data
         if: always()
