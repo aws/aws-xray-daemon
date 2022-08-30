@@ -156,6 +156,7 @@ jobs:
   
   test:
     name: Integration testing
+    if: ${{ github.event_name != 'pull_request' }} #Cannot run integration tests on PR as there is no access to the IAM Role via GH secrets.
     needs: [build]
     runs-on: ubuntu-latest
     strategy: 
