@@ -217,7 +217,7 @@ jobs:
           echo "trace-id: ${{ env.TRACE_ID }}"
           echo "sleeping for 60 seconds"
           for i in {1..60}; do echo 'Sleeping...'$i && sleep 1; done
-          var=$(aws xray batch-get-traces --trace-ids ${{ env.TRACE_ID }} | jq -r '.Traces[0].Id')
+          var=$(aws xray batch-get-traces --trace-ids ${{ env.TRACE_ID }}  --region ${{ steps.setRegion.outputs.region }} | jq -r '.Traces[0].Id')
           if [[ $var == ${{ env.TRACE_ID }} ]]; then
             echo "Found matching trace."
           else

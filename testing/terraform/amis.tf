@@ -24,7 +24,7 @@ variable "amis" {
       ami_id             = "ami-02da34c96f69d525c"
       ami_product_code   = []
       family             = "debian"
-      arch               = "amd64"
+      arch               = "x86_64"
       login_user         = "ubuntu"
     }
     amazonlinux2 = {
@@ -34,7 +34,7 @@ variable "amis" {
       ami_id             = "ami-0d08ef957f0e4722b"
       ami_product_code   = []
       family             = "linux"
-      arch               = "amd64"
+      arch               = "x86_64"
       login_user         = "ec2-user"
     }
     redhat8 = {
@@ -44,7 +44,7 @@ variable "amis" {
       ami_id             = "ami-087c2c50437d0b80d"
       ami_product_code   = []
       family             = "linux"
-      arch               = "amd64"
+      arch               = "x86_64"
     }
   }
 }
@@ -60,6 +60,11 @@ data "aws_ami" "ec2_ami" {
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = [var.amis[var.testing_ami]["arch"]]
   }
 
   owners = [var.amis[var.testing_ami]["ami_owner"]]
