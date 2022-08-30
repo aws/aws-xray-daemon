@@ -64,11 +64,38 @@ locals {
   ec2_instance_profile = var.ec2_instance_profile
 }
 
+resource "aws_security_group" "ec2_sec_group" {
+  name_prefix = "daemon-test-sg-"
+  description = "Allow HTTP and SSH traffic via Terraform"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_instance" "xray_daemon" {
-  ami                  = data.aws_ami.ec2_ami.id
-  instance_type        = local.instance_type
-  key_name             = local.ssh_key_name
-  iam_instance_profile = local.ec2_instance_profile
+  ami                    = data.aws_ami.ec2_ami.id
+  instance_type          = local.instance_type
+  key_name               = local.ssh_key_name
+  iam_instance_profile   = local.ec2_instance_profile
+  vpc_security_group_ids = [aws_security_group.ec2_sec_group.id]
   tags = {
     Name = "XRayDaemon"
   }
