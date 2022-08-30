@@ -6,6 +6,12 @@ on:
   pull_request:
     branches:
       - master
+  workflow_dispatch:
+    inputs:
+      region:
+        description: The region to test the daemon binaries in.
+        required: true
+        default: us-west-2
 permissions:
   id-token: write
   contents: read
@@ -150,6 +156,7 @@ jobs:
   
   test:
     name: Integration testing
+    if: ${{ github.event_name != 'pull_request' }} #Cannot run integration tests on PR as there is no access to the IAM Role via GH secrets.
     needs: [build]
     runs-on: ubuntu-latest
     strategy: 
@@ -176,11 +183,21 @@ jobs:
       - name: Set up terraform
         uses: hashicorp/setup-terraform@v2
 
+      # workaround for handling input value for auto-triggered workflows
+      # https://dev.to/mrmike/github-action-handling-input-default-value-5f2g
+      - name: Set AWS region value
+        id: setRegion
+        run: |
+          USER_INPUT=${{ github.event.inputs.region }}
+          # Use user input region or fall back to "us-west-2"
+          REGION=${USER_INPUT:-"us-west-2"}
+          echo "::set-output name=region::$REGION"
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.TESTING_ROLE_ARN }}
-          aws-region: us-west-2
+          aws-region: ${{ steps.setRegion.outputs.region }}
 
       - name: Generate trace data
         id: traceData
@@ -193,7 +210,7 @@ jobs:
           cd testing/terraform
           terraform init
           terraform validate
-          terraform apply -auto-approve -var-file=./testcases/${{ matrix.testcases }}.tfvars
+          terraform apply -auto-approve -var-file=./testcases/${{ matrix.testcases }}.tfvars -var=aws_region=${{ steps.setRegion.outputs.region }}
 
       - name: Validate trace data
         if: always()
@@ -201,7 +218,8 @@ jobs:
           echo "trace-id: ${{ env.TRACE_ID }}"
           echo "sleeping for 60 seconds"
           for i in {1..60}; do echo 'Sleeping...'$i && sleep 1; done
-          var=$(aws xray batch-get-traces --trace-ids ${{ env.TRACE_ID }} | jq -r '.Traces[0].Id')
+          var=$(aws xray batch-get-traces --trace-ids ${{ env.TRACE_ID }}  --region ${{ steps.setRegion.outputs.region }} | jq -r '.Traces[0].Id')
+
           if [[ $var == ${{ env.TRACE_ID }} ]]; then
             echo "Found matching trace."
           else
@@ -213,4 +231,4 @@ jobs:
         if: always()
         run: |
           cd testing/terraform
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var=aws_region=${{ steps.setRegion.outputs.region }}
