@@ -229,4 +229,4 @@ jobs:
         if: always()
         run: |
           cd testing/terraform
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve -var=aws_region=${{ steps.setRegion.outputs.region }}
