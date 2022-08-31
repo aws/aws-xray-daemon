@@ -189,8 +189,6 @@ jobs:
       - name: Set AWS region and partition values
         id: setRegion
         run: |
-          
-
           if [[ ${{ matrix.testcases }} == "linux_zip_cn" ]]; then
             echo "::set-output name=region::cn-north-1"
             echo "::set-output name=partition::aws-cn"
