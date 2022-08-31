@@ -189,15 +189,17 @@ jobs:
       - name: Set AWS region and partition values
         id: setRegion
         run: |
-          USER_INPUT=${{ github.event.inputs.region }}
-          # Use user input region or fall back to "us-west-2"
-          REGION=${USER_INPUT:-"us-west-2"}
-          echo "::set-output name=region::$REGION"
-          echo "::set-output name=partition::aws"
+          
 
           if [[ ${{ matrix.testcases }} == "linux_zip_cn" ]]; then
             echo "::set-output name=region::cn-north-1"
             echo "::set-output name=partition::aws-cn"
+          else
+            USER_INPUT=${{ github.event.inputs.region }}
+            # Use user input region or fall back to "us-west-2"
+            REGION=${USER_INPUT:-"us-west-2"}
+            echo "::set-output name=region::$REGION"
+            echo "::set-output name=partition::aws"  
           fi
 
       - name: Configure AWS Credentials
