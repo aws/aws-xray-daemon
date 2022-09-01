@@ -166,6 +166,8 @@ jobs:
           - linux_deb
           - linux_rpm
           - linux_zip
+          - linux_zip_cn
+          - linux_zip_us_gov
 
     steps:
       - name: Checkout repo
@@ -185,19 +187,43 @@ jobs:
 
       # workaround for handling input value for auto-triggered workflows
       # https://dev.to/mrmike/github-action-handling-input-default-value-5f2g
-      - name: Set AWS region value
+      - name: Set AWS region and partition values
         id: setRegion
         run: |
-          USER_INPUT=${{ github.event.inputs.region }}
-          # Use user input region or fall back to "us-west-2"
-          REGION=${USER_INPUT:-"us-west-2"}
-          echo "::set-output name=region::$REGION"
+          if [[ ${{ matrix.testcases }} == "linux_zip_cn" ]]; then
+            echo "::set-output name=region::cn-north-1"
+            echo "::set-output name=partition::aws-cn"
+          elif [[ ${{ matrix.testcases }} == "linux_zip_us_gov" ]]; then
+            echo "::set-output name=region::us-gov-west-1"
+            echo "::set-output name=partition::aws-us-gov"
+          else
+            USER_INPUT=${{ github.event.inputs.region }}
+            # Use user input region or fall back to "us-west-2"
+            REGION=${USER_INPUT:-"us-west-2"}
+            echo "::set-output name=region::$REGION"
+            echo "::set-output name=partition::aws"  
+          fi
 
       - name: Configure AWS Credentials
+        if: ${{ steps.setRegion.outputs.partition == 'aws' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.TESTING_ROLE_ARN }}
           aws-region: ${{ steps.setRegion.outputs.region }}
+
+      - name: Configure AWS Credentials - China
+        if: ${{ steps.setRegion.outputs.partition == 'aws-cn' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.TESTING_ROLE_ARN_CN }}
+          aws-region: cn-north-1
+
+      - name: Configure AWS Credentials - US Gov
+        if: ${{ steps.setRegion.outputs.partition == 'aws-us-gov' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.TESTING_ROLE_ARN_US_GOV }}
+          aws-region: us-gov-west-1
 
       - name: Generate trace data
         id: traceData
@@ -206,6 +232,7 @@ jobs:
           ./testing/generate_trace_data.sh
 
       - name: Run terraform and send trace data
+        id: terraformSendData
         run: |
           cd testing/terraform
           terraform init
@@ -213,7 +240,7 @@ jobs:
           terraform apply -auto-approve -var-file=./testcases/${{ matrix.testcases }}.tfvars -var=aws_region=${{ steps.setRegion.outputs.region }}
 
       - name: Validate trace data
-        if: always()
+        if: steps.terraformSendData.outcome == 'success'
         run: |
           echo "trace-id: ${{ env.TRACE_ID }}"
           echo "sleeping for 60 seconds"
