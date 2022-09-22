@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.5 (2022-09-22)
+- Fix CVE-2022-27664 [PR #180](https://github.com/aws/aws-xray-daemon/pull/180)
+
 ## 3.3.4 (2022-08-31)
 - Upgrade aws-sdk-go to latest version to get SSO credential support [PR #168](https://github.com/aws/aws-xray-daemon/pull/168)
 - Fix CVE issues by bumping GO version to 1.18 [PR #173](https://github.com/aws/aws-xray-daemon/pull/173)
