@@ -61,7 +61,6 @@ func (s *segmentsBatch) send(batch []*string) {
 }
 
 func (s *segmentsBatch) poll() {
-	//failedAttempt := 0
 	for {
 		batch, ok := <-s.batches
 		if ok {
