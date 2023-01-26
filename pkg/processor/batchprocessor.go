@@ -13,19 +13,12 @@ import (
 	"github.com/aws/aws-xray-daemon/pkg/conn"
 	"github.com/aws/aws-xray-daemon/pkg/telemetry"
 	"github.com/aws/aws-xray-daemon/pkg/util/timer"
-	"math"
 	"math/rand"
 	"regexp"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/xray"
 	log "github.com/cihub/seelog"
-)
-
-const (
-	backoffCapSeconds  = 30
-	backoffMinAttempts = 10
-	backoffBaseSeconds = 1
 )
 
 var /* const */ segIdRegexp = regexp.MustCompile(`\"id\":\"(.*?)\"`)
@@ -68,7 +61,7 @@ func (s *segmentsBatch) send(batch []*string) {
 }
 
 func (s *segmentsBatch) poll() {
-	failedAttempt := 0
+	//failedAttempt := 0
 	for {
 		batch, ok := <-s.batches
 		if ok {
@@ -80,16 +73,9 @@ func (s *segmentsBatch) poll() {
 			r, err := s.xRay.PutTraceSegments(params)
 			if err != nil {
 				telemetry.EvaluateConnectionError(err)
-				failedAttempt++
-				backOffSeconds := s.backOff(failedAttempt)
 				log.Errorf("Sending segment batch failed with: %v", err)
-				log.Warnf("Delaying sending of additional batches by %v seconds", backOffSeconds)
-				if backOffSeconds > 0 {
-					<-s.timer.After(time.Second * time.Duration(backOffSeconds))
-				}
 				continue
 			} else {
-				failedAttempt = 0
 				telemetry.T.SegmentSent(int64(len(batch)))
 			}
 			elapsed := time.Since(start)
@@ -135,36 +121,4 @@ func (s *segmentsBatch) poll() {
 
 func (s *segmentsBatch) close() {
 	close(s.batches)
-}
-
-func min(x, y int32) int32 {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-// Returns int32 number for Full Jitter Base
-// If the computation result in value greater than Max Int31 it returns MAX Int31 value
-func getValidJitterBase(backoffBase, attempt int) int32 {
-	base := float64(backoffBase) * math.Pow(2, float64(attempt))
-	var baseInt int32
-	if base > float64(math.MaxInt32/2) {
-		baseInt = math.MaxInt32 / 2
-	} else {
-		baseInt = int32(base)
-	}
-	return baseInt
-}
-
-func (s *segmentsBatch) backOff(attempt int) int32 {
-	if attempt <= backoffMinAttempts {
-		return 0
-	}
-	// Attempts to be considered for Jitter Backoff
-	backoffAttempts := attempt - backoffMinAttempts
-	// As per Full Jitter described in https://www.awsarchitectureblog.com/2015/03/backoff.html
-	base := getValidJitterBase(backoffBaseSeconds, backoffAttempts)
-	randomBackoff := s.randGen.Int31n(base)
-	return min(backoffCapSeconds, randomBackoff)
 }
