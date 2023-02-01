@@ -2,7 +2,6 @@
 All notable changes to this project will be documented in this file.
 
 ## 3.3.6 (2023-02-01)
-- Rebuilding with latest amazonlinux base image to address CVE issues.
 - Remove custom backoff logic for sending segments [PR #186](https://github.com/aws/aws-xray-daemon/pull/186)
 
 ## 3.3.5 (2022-09-22)
