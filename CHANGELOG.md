@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.6 (2023-02-01)
+- Remove custom backoff logic for sending segments [PR #186](https://github.com/aws/aws-xray-daemon/pull/186)
+
 ## 3.3.5 (2022-09-22)
 - Fix CVE-2022-27664 [PR #180](https://github.com/aws/aws-xray-daemon/pull/180)
 
@@ -38,7 +41,7 @@ All notable changes to this project will be documented in this file.
 - xray.service: explicitly set ConfigurationDirectoryMode to 0755
 
 ## 3.1.0 (2019-07-01)
-- STS credentials are fetched from STS regional endpoint instead of global endpoint. If the configured region is disabled for the STS token, the credentials are 
+- STS credentials are fetched from STS regional endpoint instead of global endpoint. If the configured region is disabled for the STS token, the credentials are
 fetched from primary regional endpoint in that AWS partition. The primary regional endpoint cannot be disabled for STS token.
 - Updated AWS Go dependency to version 1.20.10
 - Added debug log on request received for HTTP proxy server
