@@ -25,7 +25,7 @@ import (
 	log "github.com/cihub/seelog"
 )
 
-// Constant prefixes used in to identify information in user-agent
+// Constant prefixes used to identify information in user-agent
 const agentPrefix = "xray-agent/xray-daemon/"
 const execEnvPrefix = " exec-env/"
 const osPrefix = " OS/"
