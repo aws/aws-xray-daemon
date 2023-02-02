@@ -2,6 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 ## 3.3.6 (2023-02-01)
+- User-agent redesign - add additional information to user-agent [PR #188](https://github.com/aws/aws-xray-daemon/pull/188)
 - Remove custom backoff logic for sending segments [PR #186](https://github.com/aws/aws-xray-daemon/pull/186)
 
 ## 3.3.5 (2022-09-22)

@@ -11,19 +11,24 @@ package conn
 
 import (
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/aws/aws-xray-daemon/pkg/cfg"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/xray"
+	"github.com/aws/aws-xray-daemon/pkg/cfg"
 	log "github.com/cihub/seelog"
 )
+
+// Constant prefixes used to identify information in user-agent
+const agentPrefix = "xray-agent/xray-daemon/"
+const execEnvPrefix = " exec-env/"
+const osPrefix = " OS/"
 
 // XRay defines X-Ray api call structure.
 type XRay interface {
@@ -51,9 +56,16 @@ func NewXRay(awsConfig *aws.Config, s *session.Session) XRay {
 	x := xray.New(s, awsConfig)
 	log.Debugf("Using Endpoint: %s", x.Endpoint)
 
+	execEnv := os.Getenv("AWS_EXECUTION_ENV")
+	if execEnv == "" {
+		execEnv = "UNKNOWN"
+	}
+
+	osInformation := runtime.GOOS + "-" + runtime.GOARCH
+
 	x.Handlers.Build.PushBackNamed(request.NamedHandler{
 		Name: "tracing.XRayVersionUserAgentHandler",
-		Fn:   request.MakeAddToUserAgentHandler("xray", cfg.Version, os.Getenv("AWS_EXECUTION_ENV")),
+		Fn:   request.MakeAddToUserAgentFreeFormHandler(agentPrefix + cfg.Version + execEnvPrefix + execEnv + osPrefix + osInformation),
 	})
 
 	x.Handlers.Sign.PushFrontNamed(request.NamedHandler{
