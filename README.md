@@ -110,7 +110,7 @@ NOTE: We are not recommending to use daemon image with alpha tag in production e
 
 **EC2 Instance Type:** T2.Micro [1 vCPU, 1 GB Memory]
 
-**Collection time:** 10 minutes per TPS (TPS = Number of segments sent to daemon in 1 second*)
+**Collection time:** 10 minutes per TPS (TPS = Number of segments sent to daemon in 1 second)
 
 **Daemon version tested:** 3.3.6
 
