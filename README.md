@@ -106,6 +106,25 @@ docker pull public.ecr.aws/xray/aws-xray-daemon:3.2.0
 
 NOTE: We are not recommending to use daemon image with alpha tag in production environment. For production environment customer should pull in an image with released tag. 
 
+## X-Ray Daemon Performance Report
+
+**EC2 Instance Type:** T2.Micro [1 vCPU, 1 GB Memory]
+
+**Collection time:** 10 minutes per TPS (TPS = Number of segments sent to daemon in 1 second)
+
+**Daemon version tested:** 3.3.6
+
+| **TPS** | **Avg CPU Usage (%)** | **Avg Memory Usage (MB)** |
+|---------|-----------------------|---------------------------|
+| 0       | 0                     | 17.07                     |
+| 100     | 0.9                   | 28.5                      |
+| 200     | 1.87                  | 29.3                      |
+| 400     | 3.76                  | 29.1                      |
+| 1000    | 9.36                  | 29.5                      |
+| 2000    | 18.9                  | 29.7                      |
+| 4000    | 38.3                  | 29.5                      |
+
+
 ## Testing  
 
 `make test` will run unit tests for the X-Ray daemon.  
