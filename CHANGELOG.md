@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.7 (2023-04-24)
+- Bump golang.org/x/net to v0.7.0 to fix CVE 2022-41725 [PR #193](https://github.com/aws/aws-xray-daemon/pull/193)
+- Bump Go version to 1.20.3 [PR #196](https://github.com/aws/aws-xray-daemon/pull/196)
+
 ## 3.3.6 (2023-02-01)
 - User-agent redesign - add additional information to user-agent [PR #188](https://github.com/aws/aws-xray-daemon/pull/188)
 - Remove custom backoff logic for sending segments [PR #186](https://github.com/aws/aws-xray-daemon/pull/186)
