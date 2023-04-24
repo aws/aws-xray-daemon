@@ -12,7 +12,7 @@ RUN adduser -D -u 10001 xray
 ENV TARGETPLATFORM=${TARGETPLATFORM:-linux/amd64}
 RUN Tool/src/build-in-docker.sh
 
-FROM amazonlinux
+FROM amazonlinux:2023.0.20230322.0
 COPY --from=build-env /workspace/xray .
 COPY --from=build-env /etc/passwd /etc/passwd
 COPY --from=build-env /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
