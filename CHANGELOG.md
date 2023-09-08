@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.8 (2023-09-08)
+- Bump Go version to v1.21.1 [PR #205](https://github.com/aws/aws-xray-daemon/pull/205)
+- Bump golang.org/x/net to v0.15.0 to fix CVE-2023-3978 [PR #205](https://github.com/aws/aws-xray-daemon/pull/205)
+- Bump aws-sdk-go to v1.44.298 for SSO token provider support for sso-session in AWS shared config [PR #206](https://github.com/aws/aws-xray-daemon/pull/206)
+
 ## 3.3.7 (2023-04-24)
 - Bump golang.org/x/net to v0.7.0 to fix CVE 2022-41725 [PR #193](https://github.com/aws/aws-xray-daemon/pull/193)
 - Bump Go version to 1.20.3 [PR #196](https://github.com/aws/aws-xray-daemon/pull/196)
