@@ -3,7 +3,7 @@ module github.com/aws/aws-xray-daemon
 go 1.21
 
 require (
-	github.com/aws/aws-sdk-go v1.44.62
+	github.com/aws/aws-sdk-go v1.44.298
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
 	github.com/shirou/gopsutil v2.19.10+incompatible
 	github.com/stretchr/testify v1.4.0
