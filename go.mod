@@ -7,8 +7,8 @@ require (
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
 	github.com/shirou/gopsutil v2.19.10+incompatible
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/net v0.15.0
-	golang.org/x/sys v0.12.0
+	golang.org/x/net v0.17.0
+	golang.org/x/sys v0.13.0
 	gopkg.in/yaml.v2 v2.2.8
 )
 
