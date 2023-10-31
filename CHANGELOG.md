@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.9 (2023-10-31)
+- Bump golang.org/x/net to v0.17.0 to fix CVE-2023-44487 [PR #208](https://github.com/aws/aws-xray-daemon/pull/208)
+- Bump Go version to v1.21.3 [PR #209](https://github.com/aws/aws-xray-daemon/pull/209)
+
 ## 3.3.8 (2023-09-08)
 - Bump Go version to v1.21.1 [PR #205](https://github.com/aws/aws-xray-daemon/pull/205)
 - Bump golang.org/x/net to v0.15.0 to fix CVE-2023-3978 [PR #205](https://github.com/aws/aws-xray-daemon/pull/205)
