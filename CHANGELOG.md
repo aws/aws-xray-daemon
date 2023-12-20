@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 3.9.10 (2023-12-20)
+## 3.3.10 (2023-12-20)
 - Bump Go version to v1.21.5 [PR #212](https://github.com/aws/aws-xray-daemon/pull/212)
 
 ## 3.3.9 (2023-10-31)
