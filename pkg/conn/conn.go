@@ -63,7 +63,7 @@ func getNewHTTPClient(maxIdle int, requestTimeout int, noVerify bool, proxyAddre
 	transport := &http.Transport{
 		MaxIdleConnsPerHost: maxIdle,
 		TLSClientConfig:     tls,
-		IdleConnTimeout:     90 * time.Second, // Should be longer than PutExtensibleTelemetry call frequency: 60 seconds
+		IdleConnTimeout:     90 * time.Second, // Should be longer than PutTelemetryRecords call frequency: 60 seconds
 		Proxy:               http.ProxyURL(proxyURL),
 	}
 
