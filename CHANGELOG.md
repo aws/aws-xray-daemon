@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.11 (2024-03-27)
+- Use latest tag for amazonlinux for Docker image [PR #217](https://github.com/aws/aws-xray-daemon/pull/217)
+- Add http2 timouts to close bad TCP connection [PR #216](https://github.com/aws/aws-xray-daemon/pull/216)
+
 ## 3.3.10 (2023-12-20)
 - Bump Go version to v1.21.5 [PR #212](https://github.com/aws/aws-xray-daemon/pull/212)
 
