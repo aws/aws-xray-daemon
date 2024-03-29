@@ -99,6 +99,10 @@ resource "aws_instance" "xray_daemon" {
   tags = {
     Name = "XRayDaemon"
   }
+  metadata_options {
+    http_endpoint = "disabled"
+    http_tokens = "required"
+  }
 }
 
 resource "null_resource" "wait_for_instance_ready" {
