@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.12 (2024-05-01)
+- Bump golang.org/x/net from 0.17.0 to 0.23.0 [PR #219](https://github.com/aws/aws-xray-daemon/pull/219)
+
 ## 3.3.11 (2024-03-27)
 - Use latest tag for amazonlinux for Docker image [PR #217](https://github.com/aws/aws-xray-daemon/pull/217)
 - Add http2 timouts to close bad TCP connection [PR #216](https://github.com/aws/aws-xray-daemon/pull/216)
