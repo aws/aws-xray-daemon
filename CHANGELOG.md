@@ -1,9 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-### 3.3.14 (2024-08-19)
-- No major changes since last release. Releasing to update DockerHub image and bring in latest AL2023 image to resolve https://alas.aws.amazon.com/cve/html/CVE-2024-5535.html.
-
 ## 3.3.13 (2024-07-24)
 - Bump Go version to v1.22.4 [PR #222](https://github.com/aws/aws-xray-daemon/pull/222)
 
