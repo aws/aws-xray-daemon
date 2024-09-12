@@ -191,17 +191,17 @@ jobs:
         id: setRegion
         run: |
           if [[ ${{ matrix.testcases }} == "linux_zip_cn" ]]; then
-            echo "::set-output name=region::cn-north-1"
-            echo "::set-output name=partition::aws-cn"
+            echo "region=cn-north-1" >> $GITHUB_OUTPUT
+            echo "partition=aws-cn" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.testcases }} == "linux_zip_us_gov" ]]; then
-            echo "::set-output name=region::us-gov-west-1"
-            echo "::set-output name=partition::aws-us-gov"
+            echo "region=us-gov-west-1" >> $GITHUB_OUTPUT
+            echo "partition=aws-us-gov" >> $GITHUB_OUTPUT
           else
             USER_INPUT=${{ github.event.inputs.region }}
             # Use user input region or fall back to "us-west-2"
             REGION=${USER_INPUT:-"us-west-2"}
-            echo "::set-output name=region::$REGION"
-            echo "::set-output name=partition::aws"  
+            echo "region=$REGION" >> $GITHUB_OUTPUT
+            echo "partition=aws" >> $GITHUB_OUTPUT  
           fi
 
       - name: Configure AWS Credentials
