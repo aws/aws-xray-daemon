@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST_ACCOUNT }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST_ACCOUNT }}
+          role-to-assume: ${{ secrets.AWS_INTEG_TEST_ROLE_ARN }}
           aws-region: us-east-1
 
       - name: Login to Public ECR
@@ -53,10 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST_ACCOUNT }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST_ACCOUNT }}
+          role-to-assume: ${{ secrets.AWS_INTEG_TEST_ROLE_ARN }}
           aws-region: us-east-1
 
       - name: Pull an image from docker hub
