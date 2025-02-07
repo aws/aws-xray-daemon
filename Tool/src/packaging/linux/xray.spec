@@ -1,5 +1,5 @@
 Name:		xray
-Version:	%rpmversion
+Version:	%rpmver
 Release:	1
 Summary:	X-Ray daemon
 

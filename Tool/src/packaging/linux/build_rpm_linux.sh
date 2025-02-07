@@ -38,7 +38,7 @@ cp ${BGO_SPACE}/THIRD-PARTY-LICENSES.txt ${BGO_SPACE}/bin/linux_${ARCH}/linux/et
 echo "Creating the rpm package"
 SPEC_FILE="${BGO_SPACE}/Tool/src/packaging/linux/xray.spec"
 BUILD_ROOT="${BGO_SPACE}/bin/linux_${ARCH}/linux"
-rpmbuild --target ${BUILD_ARCH}-linux --define "rpmversion ${VERSION}" --define "_topdir bin/linux_${ARCH}/linux/rpmbuild" -bb --buildroot ${BUILD_ROOT} ${SPEC_FILE}
+rpmbuild --target ${BUILD_ARCH}-linux --define "rpmver ${VERSION}" --define "_topdir bin/linux_${ARCH}/linux/rpmbuild" -bb --buildroot ${BUILD_ROOT} ${SPEC_FILE}
 
 echo "Copying rpm files to bin"
 cp ${BGO_SPACE}/bin/linux_${ARCH}/linux/rpmbuild/RPMS/${BUILD_ARCH}/*.rpm ${BGO_SPACE}/build/dist/aws-xray-daemon-linux-${ARCH}-${VERSION}.rpm
