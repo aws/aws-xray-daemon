@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.3.15 (2025-06-25)
+- Bump Go version to v1.24.2 [PR #237](https://github.com/aws/aws-xray-daemon/pull/237)
+- Bump golang.org/x/net from 0.33.0 to 0.38.0 (#235) [PR #235](https://github.com/aws/aws-xray-daemon/pull/235)
+
 ## 3.3.14 (2025-02-12)
 - Bump Go version to v1.23.6 [PR #231](https://github.com/aws/aws-xray-daemon/pull/231)
 - Bump golang.org/x/net from 0.23.0 to 0.33.0 [PR #230](https://github.com/aws/aws-xray-daemon/pull/230)
