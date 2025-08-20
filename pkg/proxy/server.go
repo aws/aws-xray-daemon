@@ -3,6 +3,9 @@ package proxy
 
 import (
 	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -14,10 +17,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-xray-daemon/pkg/cfg"
 	"github.com/aws/aws-xray-daemon/pkg/conn"
 	log "github.com/cihub/seelog"
@@ -34,13 +35,13 @@ type Server struct {
 // NewServer returns a proxy server listening on the given address.
 // Requests are forwarded to the endpoint in the given config.
 // Requests are signed using credentials from the given config.
-func NewServer(cfg *cfg.Config, awsCfg *aws.Config, sess *session.Session) (*Server, error) {
+func NewServer(cfg *cfg.Config, awsCfg aws.Config) (*Server, error) {
 	_, err := net.ResolveTCPAddr("tcp", cfg.Socket.TCPAddress)
 	if err != nil {
 		log.Errorf("%v", err)
 		os.Exit(1)
 	}
-	endPoint, er := getServiceEndpoint(awsCfg)
+	endPoint, er := getServiceEndpoint(&awsCfg)
 
 	if er != nil {
 		return nil, fmt.Errorf("%v", er)
@@ -54,9 +55,7 @@ func NewServer(cfg *cfg.Config, awsCfg *aws.Config, sess *session.Session) (*Ser
 		return nil, fmt.Errorf("unable to parse xray endpoint: %v", err)
 	}
 
-	signer := &v4.Signer{
-		Credentials: sess.Config.Credentials,
-	}
+	signer := v4.NewSigner()
 
 	transport := conn.ProxyServerTransport(cfg)
 
@@ -91,8 +90,29 @@ func NewServer(cfg *cfg.Config, awsCfg *aws.Config, sess *session.Session) (*Ser
 				return
 			}
 
-			// Sign request. signer.Sign() also repopulates the request body.
-			_, err = signer.Sign(req, body, service, *awsCfg.Region, time.Now())
+			// Calculate payload hash
+			var payloadHash string
+			if body != nil {
+				bodyBytes, _ := ioutil.ReadAll(body)
+				hash := sha256.Sum256(bodyBytes)
+				payloadHash = hex.EncodeToString(hash[:])
+				// Reset body for request
+				req.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+				body = bytes.NewReader(bodyBytes)
+			} else {
+				hash := sha256.Sum256([]byte{})
+				payloadHash = hex.EncodeToString(hash[:])
+			}
+
+			// Get credentials
+			creds, err := awsCfg.Credentials.Retrieve(context.Background())
+			if err != nil {
+				log.Errorf("Unable to retrieve credentials: %v", err)
+				return
+			}
+
+			// Sign request
+			err = signer.SignHTTP(context.Background(), creds, req, payloadHash, service, awsCfg.Region, time.Now())
 			if err != nil {
 				log.Errorf("Unable to sign request: %v", err)
 			}
@@ -145,25 +165,32 @@ func (s *Server) Close() {
 }
 
 // getServiceEndpoint returns X-Ray service endpoint.
-// It is guaranteed that awsCfg config instance is non-nil and the region value is non nil or non empty in awsCfg object.
+// It is guaranteed that awsCfg config instance is non-nil and the region value is non empty in awsCfg object.
 // Currently the caller takes care of it.
 func getServiceEndpoint(awsCfg *aws.Config) (string, error) {
-	if awsCfg.Endpoint == nil || *awsCfg.Endpoint == "" {
-		if awsCfg.Region == nil || *awsCfg.Region == "" {
-			return "", errors.New("unable to generate endpoint from region with nil value")
+	// Check for custom endpoint resolver (for testing)
+	if awsCfg.EndpointResolverWithOptions != nil {
+		ep, err := awsCfg.EndpointResolverWithOptions.ResolveEndpoint("xray", awsCfg.Region)
+		if err == nil && ep.URL != "" {
+			return ep.URL, nil
 		}
-		resolved, err := endpoints.DefaultResolver().EndpointFor(service, *awsCfg.Region, setResolverConfig())
-		if err != nil {
-			return "", err
-		}
-
-		return resolved.URL, err
 	}
-	return *awsCfg.Endpoint, nil
-}
-
-func setResolverConfig() func(*endpoints.Options) {
-	return func(p *endpoints.Options) {
-		p.ResolveUnknownService = true
+	
+	if awsCfg.BaseEndpoint != nil && *awsCfg.BaseEndpoint != "" {
+		return *awsCfg.BaseEndpoint, nil
 	}
+	
+	if awsCfg.Region == "" {
+		return "", errors.New("unable to generate endpoint from region with empty value")
+	}
+	
+	// Generate standard X-Ray endpoint
+	// For most regions, the endpoint is: https://xray.{region}.amazonaws.com
+	// For China regions: https://xray.{region}.amazonaws.com.cn
+	endpoint := fmt.Sprintf("https://xray.%s.amazonaws.com", awsCfg.Region)
+	if awsCfg.Region == "cn-north-1" || awsCfg.Region == "cn-northwest-1" {
+		endpoint = fmt.Sprintf("https://xray.%s.amazonaws.com.cn", awsCfg.Region)
+	}
+	
+	return endpoint, nil
 }

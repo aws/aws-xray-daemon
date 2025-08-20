@@ -10,23 +10,19 @@
 package processor
 
 import (
+	"math/rand"
+	"os"
 	"sync/atomic"
 	"time"
 
-	log "github.com/cihub/seelog"
-
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-xray-daemon/pkg/bufferpool"
-	"github.com/aws/aws-xray-daemon/pkg/ringbuffer"
-	"github.com/aws/aws-xray-daemon/pkg/tracesegment"
-
 	"github.com/aws/aws-xray-daemon/pkg/cfg"
 	"github.com/aws/aws-xray-daemon/pkg/conn"
+	"github.com/aws/aws-xray-daemon/pkg/ringbuffer"
+	"github.com/aws/aws-xray-daemon/pkg/tracesegment"
 	"github.com/aws/aws-xray-daemon/pkg/util/timer"
-	"math/rand"
-	"os"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	log "github.com/cihub/seelog"
 )
 
 // Processor buffers segments and send to X-Ray service.
@@ -63,7 +59,7 @@ type Processor struct {
 }
 
 // New creates new instance of Processor.
-func New(awsConfig *aws.Config, s *session.Session, segmentBatchProcessorCount int, std *ringbuffer.RingBuffer,
+func New(awsConfig aws.Config, segmentBatchProcessorCount int, std *ringbuffer.RingBuffer,
 	pool *bufferpool.BufferPool, c *cfg.ParameterConfig) *Processor {
 	batchesChan := make(chan []*string, c.Processor.BatchProcessorQueueSize)
 	segmentBatchDoneChan := make(chan bool)
@@ -73,7 +69,7 @@ func New(awsConfig *aws.Config, s *session.Session, segmentBatchProcessorCount i
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
 		timer:   &timer.Client{},
 	}
-	x := conn.NewXRay(awsConfig, s)
+	x := conn.NewXRay(awsConfig)
 	if x == nil {
 		log.Error("X-Ray client returned nil")
 		os.Exit(1)

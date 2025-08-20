@@ -10,14 +10,15 @@
 package processor
 
 import (
-	"github.com/aws/aws-xray-daemon/pkg/conn"
-	"github.com/aws/aws-xray-daemon/pkg/telemetry"
-	"github.com/aws/aws-xray-daemon/pkg/util/timer"
+	"context"
 	"math/rand"
 	"regexp"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/xray"
+	"github.com/aws/aws-sdk-go-v2/service/xray"
+	"github.com/aws/aws-xray-daemon/pkg/conn"
+	"github.com/aws/aws-xray-daemon/pkg/telemetry"
+	"github.com/aws/aws-xray-daemon/pkg/util/timer"
 	log "github.com/cihub/seelog"
 )
 
@@ -61,15 +62,23 @@ func (s *segmentsBatch) send(batch []*string) {
 }
 
 func (s *segmentsBatch) poll() {
+	ctx := context.Background()
 	for {
 		batch, ok := <-s.batches
 		if ok {
+			// Convert []*string to []string
+			segments := make([]string, len(batch))
+			for i, seg := range batch {
+				if seg != nil {
+					segments[i] = *seg
+				}
+			}
 			params := &xray.PutTraceSegmentsInput{
-				TraceSegmentDocuments: batch,
+				TraceSegmentDocuments: segments,
 			}
 			start := time.Now()
 			// send segment to X-Ray service.
-			r, err := s.xRay.PutTraceSegments(params)
+			r, err := s.xRay.PutTraceSegments(ctx, params)
 			if err != nil {
 				telemetry.EvaluateConnectionError(err)
 				log.Errorf("Sending segment batch failed with: %v", err)

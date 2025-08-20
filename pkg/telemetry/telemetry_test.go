@@ -10,13 +10,15 @@
 package telemetry
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"github.com/aws/aws-xray-daemon/pkg/util/test"
 
-	"github.com/aws/aws-sdk-go/service/xray"
+	"github.com/aws/aws-sdk-go-v2/service/xray"
+	"github.com/aws/aws-sdk-go-v2/service/xray/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -26,11 +28,11 @@ type MockXRayClient struct {
 	CallNoToPutTelemetryRecords int
 }
 
-func (c *MockXRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error) {
+func (c *MockXRayClient) PutTraceSegments(ctx context.Context, input *xray.PutTraceSegmentsInput, opts ...func(*xray.Options)) (*xray.PutTraceSegmentsOutput, error) {
 	return nil, nil
 }
 
-func (c *MockXRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error) {
+func (c *MockXRayClient) PutTelemetryRecords(ctx context.Context, input *xray.PutTelemetryRecordsInput, opts ...func(*xray.Options)) (*xray.PutTelemetryRecordsOutput, error) {
 	c.CallNoToPutTelemetryRecords++
 	args := c.Called(nil)
 	errorStr := args.String(0)
@@ -45,16 +47,16 @@ func (c *MockXRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInpu
 func TestGetEmptyTelemetryRecord(t *testing.T) {
 	emptyRecord := getEmptyTelemetryRecord()
 
-	assert.EqualValues(t, emptyRecord.SegmentsReceivedCount, new(int64))
-	assert.EqualValues(t, emptyRecord.SegmentsRejectedCount, new(int64))
-	assert.EqualValues(t, emptyRecord.SegmentsSentCount, new(int64))
-	assert.EqualValues(t, emptyRecord.SegmentsSpilloverCount, new(int64))
-	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.ConnectionRefusedCount, new(int64))
-	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.HTTPCode4XXCount, new(int64))
-	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.HTTPCode5XXCount, new(int64))
-	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.OtherCount, new(int64))
-	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.TimeoutCount, new(int64))
-	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.UnknownHostCount, new(int64))
+	assert.EqualValues(t, emptyRecord.SegmentsReceivedCount, new(int32))
+	assert.EqualValues(t, emptyRecord.SegmentsRejectedCount, new(int32))
+	assert.EqualValues(t, emptyRecord.SegmentsSentCount, new(int32))
+	assert.EqualValues(t, emptyRecord.SegmentsSpilloverCount, new(int32))
+	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.ConnectionRefusedCount, new(int32))
+	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.HTTPCode4XXCount, new(int32))
+	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.HTTPCode5XXCount, new(int32))
+	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.OtherCount, new(int32))
+	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.TimeoutCount, new(int32))
+	assert.EqualValues(t, emptyRecord.BackendConnectionErrors.UnknownHostCount, new(int32))
 }
 
 func TestAddTelemetryRecord(t *testing.T) {
@@ -70,7 +72,7 @@ func TestAddTelemetryRecord(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *xray.TelemetryRecord, 1),
+		recordChan:    make(chan *types.TelemetryRecord, 1),
 		postTelemetry: true,
 	}
 
@@ -95,11 +97,11 @@ func TestSendRecordSuccess(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *xray.TelemetryRecord, 1),
+		recordChan:    make(chan *types.TelemetryRecord, 1),
 	}
-	records := make([]*xray.TelemetryRecord, 1)
+	records := make([]*types.TelemetryRecord, 1)
 	records[0] = getEmptyTelemetryRecord()
-	telemetry.sendRecords(records)
+	telemetry.sendRecords(context.Background(), records)
 
 	assert.EqualValues(t, xRay.CallNoToPutTelemetryRecords, 1)
 	assert.True(t, strings.Contains(log.Logs[0], fmt.Sprintf("Send %v telemetry record(s)", 1)))
@@ -118,7 +120,7 @@ func TestAddRecordWithPostSegmentFalse(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *xray.TelemetryRecord, 1),
+		recordChan:    make(chan *types.TelemetryRecord, 1),
 	}
 
 	telemetry.add(getEmptyTelemetryRecord())
@@ -139,7 +141,7 @@ func TestAddRecordBeforeFirstSegmentAndAfter(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *xray.TelemetryRecord, 1),
+		recordChan:    make(chan *types.TelemetryRecord, 1),
 	}
 
 	// No Segment received

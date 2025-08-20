@@ -10,8 +10,10 @@
 package conn
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -19,30 +21,32 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-xray-daemon/pkg/cfg"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go"
+	daemoncfg "github.com/aws/aws-xray-daemon/pkg/cfg"
 	log "github.com/cihub/seelog"
 	"golang.org/x/net/http2"
 )
 
 type connAttr interface {
-	newAWSSession(roleArn string, region string) *session.Session
-	getEC2Region(s *session.Session) (string, error)
+	newAWSConfig(ctx context.Context, roleArn string, region string) (aws.Config, error)
+	getEC2Region(ctx context.Context, cfg aws.Config) (string, error)
 }
 
 // Conn implements connAttr interface.
 type Conn struct{}
 
-func (c *Conn) getEC2Region(s *session.Session) (string, error) {
-	return ec2metadata.New(s).Region()
+func (c *Conn) getEC2Region(ctx context.Context, cfg aws.Config) (string, error) {
+	client := imds.NewFromConfig(cfg)
+	regionResp, err := client.GetRegion(ctx, &imds.GetRegionInput{})
+	if err != nil {
+		return "", err
+	}
+	return regionResp.Region, nil
 }
 
 const (
@@ -146,12 +150,12 @@ func getRegionFromECSMetadata() string {
 	return region
 }
 
-// GetAWSConfigSession returns AWS config and session instances.
-func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region string, noMetadata bool) (*aws.Config, *session.Session) {
-	var s *session.Session
+// GetAWSConfig returns AWS config instance.
+func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn string, region string, noMetadata bool) (aws.Config, error) {
+	var cfg aws.Config
 	var err error
 	var awsRegion string
-	http := getNewHTTPClient(cfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, cfg.ParameterConfigValue.Processor.RequestTimeout, *c.NoVerifySSL, c.ProxyAddress)
+	http := getNewHTTPClient(daemoncfg.ParameterConfigValue.Processor.MaxIdleConnPerHost, daemoncfg.ParameterConfigValue.Processor.RequestTimeout, *c.NoVerifySSL, c.ProxyAddress)
 	regionEnv := os.Getenv("AWS_REGION")
 	if region == "" && regionEnv != "" {
 		awsRegion = regionEnv
@@ -162,38 +166,46 @@ func GetAWSConfigSession(cn connAttr, c *cfg.Config, roleArn string, region stri
 	} else if !noMetadata {
 		awsRegion = getRegionFromECSMetadata()
 		if awsRegion == "" {
-			es := getDefaultSession()
-			awsRegion, err = cn.getEC2Region(es)
-			if err != nil {
-				log.Errorf("Unable to fetch region from EC2 metadata: %v\n", err)
-			} else {
-				log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
+			tempCfg, err := getDefaultConfig(ctx)
+			if err == nil {
+				awsRegion, err = cn.getEC2Region(ctx, tempCfg)
+				if err != nil {
+					log.Errorf("Unable to fetch region from EC2 metadata: %v\n", err)
+				} else {
+					log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
+				}
 			}
 		}
 	} else {
-		es := getDefaultSession()
-		awsRegion = *es.Config.Region
-		log.Debugf("Fetched region %v from session config", awsRegion)
-
+		tempCfg, err := getDefaultConfig(ctx)
+		if err == nil {
+			awsRegion = tempCfg.Region
+			log.Debugf("Fetched region %v from config", awsRegion)
+		}
 	}
 	if awsRegion == "" {
-		log.Errorf("Cannot fetch region variable from config file, environment variables, ecs metadata, or ec2 metadata. Use local-mode to use the local session region.")
+		log.Errorf("Cannot fetch region variable from config file, environment variables, ecs metadata, or ec2 metadata. Use local-mode to use the local config region.")
 		os.Exit(1)
 	}
-	s = cn.newAWSSession(roleArn, awsRegion)
-
-	config := &aws.Config{
-		Region:                 aws.String(awsRegion),
-		DisableParamValidation: aws.Bool(true),
-		MaxRetries:             aws.Int(2),
-		Endpoint:               aws.String(c.Endpoint),
-		HTTPClient:             http,
+	cfg, err = cn.newAWSConfig(ctx, roleArn, awsRegion)
+	if err != nil {
+		log.Errorf("Error creating AWS config: %v", err)
+		os.Exit(1)
 	}
-	return config, s
+
+	// Apply custom settings
+	cfg.Region = awsRegion
+	cfg.RetryMaxAttempts = 2
+	if c.Endpoint != "" {
+		cfg.BaseEndpoint = aws.String(c.Endpoint)
+	}
+	cfg.HTTPClient = http
+
+	return cfg, nil
 }
 
 // ProxyServerTransport configures HTTP transport for TCP Proxy Server.
-func ProxyServerTransport(config *cfg.Config) *http.Transport {
+func ProxyServerTransport(config *daemoncfg.Config) *http.Transport {
 	tls := &tls.Config{
 		InsecureSkipVerify: *config.NoVerifySSL,
 	}
@@ -221,42 +233,38 @@ func ProxyServerTransport(config *cfg.Config) *http.Transport {
 	return transport
 }
 
-func (c *Conn) newAWSSession(roleArn string, region string) *session.Session {
-	var s *session.Session
-	var err error
+func (c *Conn) newAWSConfig(ctx context.Context, roleArn string, region string) (aws.Config, error) {
 	if roleArn == "" {
-		s = getDefaultSession()
-	} else {
-		stsCreds := getSTSCreds(region, roleArn)
-
-		s, err = session.NewSession(&aws.Config{
-			Credentials: stsCreds,
-		})
-
-		if err != nil {
-			log.Errorf("Error in creating session object : %v\n.", err)
-			os.Exit(1)
-		}
+		return getDefaultConfig(ctx)
 	}
-	return s
+
+	// Load config with STS credentials
+	cfg, err := getDefaultConfig(ctx)
+	if err != nil {
+		return aws.Config{}, err
+	}
+
+	// Use STS to assume role
+	stsCreds := getSTSCreds(ctx, cfg, region, roleArn)
+	cfg.Credentials = stsCreds
+	return cfg, nil
 }
 
-// getSTSCreds gets STS credentials from regional endpoint. ErrCodeRegionDisabledException is received if the
+// getSTSCreds gets STS credentials from regional endpoint. RegionDisabledException is received if the
 // STS regional endpoint is disabled. In this case STS credentials are fetched from STS primary regional endpoint
 // in the respective AWS partition.
-func getSTSCreds(region string, roleArn string) *credentials.Credentials {
-	t := getDefaultSession()
-
-	stsCred := getSTSCredsFromRegionEndpoint(t, region, roleArn)
-	// Make explicit call to fetch credentials.
-	_, err := stsCred.Get()
+func getSTSCreds(ctx context.Context, cfg aws.Config, region string, roleArn string) aws.CredentialsProvider {
+	stsCred := getSTSCredsFromRegionEndpoint(ctx, cfg, region, roleArn)
+	
+	// Test if credentials work
+	_, err := stsCred.Retrieve(ctx)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case sts.ErrCodeRegionDisabledException:
-				log.Errorf("Region : %v - %v", region, aerr.Error())
+		var ae smithy.APIError
+		if errors.As(err, &ae) {
+			if ae.ErrorCode() == "RegionDisabledException" {
+				log.Errorf("Region : %v - %v", region, ae.ErrorMessage())
 				log.Info("Credentials for provided RoleARN will be fetched from STS primary region endpoint instead of regional endpoint.")
-				stsCred = getSTSCredsFromPrimaryRegionEndpoint(t, roleArn, region)
+				stsCred = getSTSCredsFromPrimaryRegionEndpoint(ctx, cfg, roleArn, region)
 			}
 		}
 	}
@@ -266,27 +274,28 @@ func getSTSCreds(region string, roleArn string) *credentials.Credentials {
 // getSTSCredsFromRegionEndpoint fetches STS credentials for provided roleARN from regional endpoint.
 // AWS STS recommends that you provide both the Region and endpoint when you make calls to a Regional endpoint.
 // Reference: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html#id_credentials_temp_enable-regions_writing_code
-func getSTSCredsFromRegionEndpoint(sess *session.Session, region string, roleArn string) *credentials.Credentials {
+func getSTSCredsFromRegionEndpoint(ctx context.Context, cfg aws.Config, region string, roleArn string) aws.CredentialsProvider {
 	regionalEndpoint := getSTSRegionalEndpoint(region)
-	// if regionalEndpoint is "", the STS endpoint is Global endpoint for classic regions except ap-east-1 - (HKG)
-	// for other opt-in regions, region value will create STS regional endpoint.
-	// This will be only in the case, if provided region is not present in aws_regions.go
-	c := &aws.Config{Region: aws.String(region), Endpoint: &regionalEndpoint}
-	st := sts.New(sess, c)
-	log.Infof("STS Endpoint : %v", st.Endpoint)
-	return stscreds.NewCredentialsWithClient(st, roleArn)
+	// Configure STS client with regional endpoint
+	cfg.Region = region
+	if regionalEndpoint != "" {
+		cfg.BaseEndpoint = aws.String(regionalEndpoint)
+	}
+	stsClient := sts.NewFromConfig(cfg)
+	log.Infof("STS Region : %v", region)
+	return stscreds.NewAssumeRoleProvider(stsClient, roleArn)
 }
 
 // getSTSCredsFromPrimaryRegionEndpoint fetches STS credentials for provided roleARN from primary region endpoint in the
 // respective partition.
-func getSTSCredsFromPrimaryRegionEndpoint(t *session.Session, roleArn string, region string) *credentials.Credentials {
+func getSTSCredsFromPrimaryRegionEndpoint(ctx context.Context, cfg aws.Config, roleArn string, region string) aws.CredentialsProvider {
 	partitionId := getPartition(region)
-	if partitionId == endpoints.AwsPartitionID {
-		return getSTSCredsFromRegionEndpoint(t, endpoints.UsEast1RegionID, roleArn)
-	} else if partitionId == endpoints.AwsCnPartitionID {
-		return getSTSCredsFromRegionEndpoint(t, endpoints.CnNorth1RegionID, roleArn)
-	} else if partitionId == endpoints.AwsUsGovPartitionID {
-		return getSTSCredsFromRegionEndpoint(t, endpoints.UsGovWest1RegionID, roleArn)
+	if partitionId == "aws" {
+		return getSTSCredsFromRegionEndpoint(ctx, cfg, "us-east-1", roleArn)
+	} else if partitionId == "aws-cn" {
+		return getSTSCredsFromRegionEndpoint(ctx, cfg, "cn-north-1", roleArn)
+	} else if partitionId == "aws-us-gov" {
+		return getSTSCredsFromRegionEndpoint(ctx, cfg, "us-gov-west-1", roleArn)
 	}
 
 	return nil
@@ -296,25 +305,37 @@ func getSTSRegionalEndpoint(r string) string {
 	p := getPartition(r)
 
 	var e string
-	if p == endpoints.AwsPartitionID || p == endpoints.AwsUsGovPartitionID {
+	if p == "aws" || p == "aws-us-gov" {
 		e = STSEndpointPrefix + r + STSEndpointSuffix
-	} else if p == endpoints.AwsCnPartitionID {
+	} else if p == "aws-cn" {
 		e = STSEndpointPrefix + r + STSAwsCnPartitionIDSuffix
 	}
 	return e
 }
 
-func getDefaultSession() *session.Session {
-	result, serr := session.NewSessionWithOptions(session.Options{SharedConfigState: session.SharedConfigEnable})
-	if serr != nil {
-		log.Errorf("Error in creating session object : %v\n.", serr)
-		os.Exit(1)
+func getDefaultConfig(ctx context.Context) (aws.Config, error) {
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithEC2IMDSRegion(),
+	)
+	if err != nil {
+		return aws.Config{}, err
 	}
-	return result
+	return cfg, nil
 }
 
 // getPartition return AWS Partition for the provided region.
 func getPartition(region string) string {
-	p, _ := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), region)
-	return p.ID()
+	// Simplified partition detection based on region prefixes
+	if strings.HasPrefix(region, "cn-") {
+		return "aws-cn"
+	}
+	if strings.HasPrefix(region, "us-gov-") {
+		return "aws-us-gov"
+	}
+	// Check if it's a valid AWS region pattern
+	if strings.Contains(region, "-") {
+		return "aws"
+	}
+	// Return empty for invalid regions
+	return ""
 }

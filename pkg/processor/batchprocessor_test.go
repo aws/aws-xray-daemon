@@ -10,12 +10,14 @@
 package processor
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/service/xray"
+	"github.com/aws/aws-sdk-go-v2/service/xray"
+	"github.com/aws/aws-sdk-go-v2/service/xray/types"
 	"github.com/aws/aws-xray-daemon/pkg/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -29,7 +31,7 @@ type MockXRayClient struct {
 	input                    *xray.PutTraceSegmentsInput
 }
 
-func (c *MockXRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error) {
+func (c *MockXRayClient) PutTraceSegments(ctx context.Context, input *xray.PutTraceSegmentsInput, opts ...func(*xray.Options)) (*xray.PutTraceSegmentsOutput, error) {
 	c.input = input
 	c.CallNoToPutTraceSegments++
 	args := c.Called(nil)
@@ -38,16 +40,16 @@ func (c *MockXRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*x
 	output := &xray.PutTraceSegmentsOutput{}
 	if errorStr == "Send unprocessed" {
 		segmentID := "Test-Segment-Id-1242113"
-		output.UnprocessedTraceSegments = append(output.UnprocessedTraceSegments, &xray.UnprocessedTraceSegment{Id: &segmentID})
+		output.UnprocessedTraceSegments = append(output.UnprocessedTraceSegments, types.UnprocessedTraceSegment{Id: &segmentID})
 	} else if errorStr == "Send Invalid" {
-		output.UnprocessedTraceSegments = append(output.UnprocessedTraceSegments, &xray.UnprocessedTraceSegment{Id: nil})
+		output.UnprocessedTraceSegments = append(output.UnprocessedTraceSegments, types.UnprocessedTraceSegment{Id: nil})
 	} else if errorStr != "" {
 		err = errors.New(errorStr)
 	}
 	return output, err
 }
 
-func (c *MockXRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error) {
+func (c *MockXRayClient) PutTelemetryRecords(ctx context.Context, input *xray.PutTelemetryRecordsInput, opts ...func(*xray.Options)) (*xray.PutTelemetryRecordsOutput, error) {
 	return nil, nil
 }
 
@@ -130,8 +132,15 @@ func TestPutTraceSegmentsParameters(t *testing.T) {
 	<-s.done
 	actualInput := xRay.input
 
+	// Convert batch []*string to []string for comparison
+	segments := make([]string, len(batch))
+	for i, seg := range batch {
+		if seg != nil {
+			segments[i] = *seg
+		}
+	}
 	expectedInput := &xray.PutTraceSegmentsInput{
-		TraceSegmentDocuments: batch,
+		TraceSegmentDocuments: segments,
 	}
 
 	assert.EqualValues(t, actualInput, expectedInput)
