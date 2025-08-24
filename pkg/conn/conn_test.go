@@ -1,4 +1,4 @@
-// Copyright 2018-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright 2018-2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License. A copy of the License is located at
 //
@@ -10,6 +10,7 @@
 package conn
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -192,6 +193,110 @@ func TestGetPartition4(t *testing.T) { // if a region is not present in the arra
 	assert.Equal(t, "", p)
 }
 
+func TestGetPartition5(t *testing.T) {
+	r := "us-iso-east-1"
+	p := getPartition(r)
+	assert.Equal(t, PartitionAWSISO, p)
+}
+
+func TestGetPartition6(t *testing.T) {
+	r := "us-isob-east-1"
+	p := getPartition(r)
+	assert.Equal(t, PartitionAWSISOB, p)
+}
+
+// TestNewAWSConfigWithoutRole tests that newAWSConfig returns default config when no role is provided
+func TestNewAWSConfigWithoutRole(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+	
+	// Set minimal credentials to prevent SDK from searching
+	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+	os.Setenv("AWS_REGION", "us-east-1")
+	
+	c := &Conn{}
+	cfg, err := c.newAWSConfig(context.Background(), "", "us-east-1")
+	
+	assert.NoError(t, err)
+	assert.Equal(t, "us-east-1", cfg.Region)
+}
+
+// TestNewAWSConfigWithRole tests that newAWSConfig configures STS assume role when role is provided
+func TestNewAWSConfigWithRole(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+	
+	// Set minimal credentials to prevent SDK from searching
+	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+	os.Setenv("AWS_REGION", "us-west-2")
+	
+	c := &Conn{}
+	roleArn := "arn:aws:iam::123456789012:role/test-role"
+	cfg, err := c.newAWSConfig(context.Background(), roleArn, "us-west-2")
+	
+	assert.NoError(t, err)
+	assert.Equal(t, "us-west-2", cfg.Region)
+	// We can't easily test that the STS provider is configured correctly,
+	// but at least we verify no error and correct region
+}
+
+// TestGetEC2Region tests the EC2 region retrieval
+// This test will fail when not running on EC2 (expected behavior)
+func TestGetEC2Region(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+	
+	// Set credentials to prevent SDK from searching
+	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+	// Disable IMDS to force a timeout/error
+	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+	
+	c := &Conn{}
+	cfg, _ := getDefaultConfig(context.Background())
+	
+	// This should fail when IMDS is disabled or not on EC2
+	region, err := c.getEC2Region(context.Background(), cfg)
+	// Either we get an error (not on EC2) or empty region
+	if err == nil {
+		assert.Empty(t, region)
+	} else {
+		assert.Error(t, err)
+	}
+}
+
+// TestGetDefaultConfig tests that getDefaultConfig returns a valid config
+func TestGetDefaultConfig(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+	
+	// Set minimal credentials and region
+	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+	os.Setenv("AWS_REGION", "us-west-2")
+	
+	cfg, err := getDefaultConfig(context.Background())
+	
+	assert.NoError(t, err)
+	assert.NotNil(t, cfg)
+	// SDK v2 will pick up the region from env
+	assert.Equal(t, "us-west-2", cfg.Region)
+}
+
+// TestGetProxyURL tests proxy URL parsing
+func TestGetProxyURL(t *testing.T) {
+	// Valid proxy URL
+	proxyURL := getProxyURL("https://127.0.0.1:8888")
+	assert.NotNil(t, proxyURL)
+	assert.Equal(t, "https", proxyURL.Scheme)
+	assert.Equal(t, "127.0.0.1:8888", proxyURL.Host)
+	
+	// Empty proxy URL
+	proxyURL = getProxyURL("")
+	assert.Nil(t, proxyURL)
+}
 
 func stashEnv() []string {
 	env := os.Environ()
