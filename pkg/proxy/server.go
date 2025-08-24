@@ -92,6 +92,10 @@ func NewServer(cfg *cfg.Config, awsCfg aws.Config) (*Server, error) {
 			}
 
 			// Calculate payload hash
+			// In SDK v2, we must manually calculate the payload hash for the SigV4 signer.
+			// The v1 SDK's Sign() method handled this automatically, but v2's SignHTTP() requires
+			// an explicit payloadHash parameter (hex-encoded SHA-256 of the request body).
+			// Reference: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/aws/signer/v4#Signer.SignHTTP
 			var payloadHash string
 			if body != nil {
 				bodyBytes, _ := ioutil.ReadAll(body)
