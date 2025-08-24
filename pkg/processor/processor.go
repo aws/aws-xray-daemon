@@ -61,7 +61,7 @@ type Processor struct {
 // New creates new instance of Processor.
 func New(awsConfig aws.Config, segmentBatchProcessorCount int, std *ringbuffer.RingBuffer,
 	pool *bufferpool.BufferPool, c *cfg.ParameterConfig) *Processor {
-	batchesChan := make(chan []*string, c.Processor.BatchProcessorQueueSize)
+	batchesChan := make(chan []string, c.Processor.BatchProcessorQueueSize)
 	segmentBatchDoneChan := make(chan bool)
 	tsb := &segmentsBatch{
 		batches: batchesChan,
@@ -164,11 +164,11 @@ func (p *Processor) flushBatch(batch []*tracesegment.TraceSegment) []*tracesegme
 func (p *Processor) sendBatchAsync(batch []*tracesegment.TraceSegment) []*tracesegment.TraceSegment {
 	log.Debugf("processor: segment batch size: %d. capacity: %d", len(batch), cap(batch))
 
-	segmentDocuments := []*string{}
+	segmentDocuments := []string{}
 	for _, segment := range batch {
 		rawBytes := *segment.Raw
 		x := string(rawBytes[:])
-		segmentDocuments = append(segmentDocuments, &x)
+		segmentDocuments = append(segmentDocuments, x)
 		p.pool.Return(segment.PoolBuf)
 	}
 	p.traceSegmentsBatch.send(segmentDocuments)

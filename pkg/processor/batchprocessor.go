@@ -31,7 +31,7 @@ type segmentsBatch struct {
 	done chan bool
 
 	// String slice of trace segments.
-	batches chan []*string
+	batches chan []string
 
 	// Instance of XRay, used to send data to X-Ray service.
 	xRay conn.XRay
@@ -43,7 +43,7 @@ type segmentsBatch struct {
 	timer timer.Timer
 }
 
-func (s *segmentsBatch) send(batch []*string) {
+func (s *segmentsBatch) send(batch []string) {
 	select {
 	case s.batches <- batch:
 
@@ -66,15 +66,8 @@ func (s *segmentsBatch) poll() {
 	for {
 		batch, ok := <-s.batches
 		if ok {
-			// Convert []*string to []string
-			segments := make([]string, len(batch))
-			for i, seg := range batch {
-				if seg != nil {
-					segments[i] = *seg
-				}
-			}
 			params := &xray.PutTraceSegmentsInput{
-				TraceSegmentDocuments: segments,
+				TraceSegmentDocuments: batch,
 			}
 			start := time.Now()
 			// send segment to X-Ray service.
@@ -93,12 +86,12 @@ func (s *segmentsBatch) poll() {
 					len(r.UnprocessedTraceSegments), elapsed.Seconds())
 				batchesMap := make(map[string]string)
 				for i := 0; i < len(batch); i++ {
-					segIdStrs := segIdRegexp.FindStringSubmatch(*batch[i])
+					segIdStrs := segIdRegexp.FindStringSubmatch(batch[i])
 					if len(segIdStrs) != 2 {
-						log.Debugf("Failed to match \"id\" in segment: %v", *batch[i])
+						log.Debugf("Failed to match \"id\" in segment: %v", batch[i])
 						continue
 					}
-					batchesMap[segIdStrs[1]] = *batch[i]
+					batchesMap[segIdStrs[1]] = batch[i]
 				}
 				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 					telemetry.T.SegmentRejected(1)

@@ -55,29 +55,29 @@ func (c *MockXRayClient) PutTelemetryRecords(ctx context.Context, input *xray.Pu
 
 func TestSendOneBatch(t *testing.T) {
 	s := segmentsBatch{
-		batches: make(chan []*string, 1),
+		batches: make(chan []string, 1),
 	}
 	testMessage := "Test Message"
-	batch := []*string{&testMessage}
+	batch := []string{testMessage}
 
 	s.send(batch)
 
 	returnedBatch := <-s.batches
 	assert.EqualValues(t, len(returnedBatch), 1)
 
-	batchString := *returnedBatch[0]
+	batchString := returnedBatch[0]
 	assert.EqualValues(t, batchString, testMessage)
 }
 
 func TestSendBatchChannelTruncate(t *testing.T) {
 	log := test.LogSetup()
 	s := segmentsBatch{
-		batches: make(chan []*string, 1),
+		batches: make(chan []string, 1),
 	}
 	testMessage := "Test Message"
-	batch := []*string{&testMessage}
+	batch := []string{testMessage}
 	testMessage2 := "Test Message 2"
-	batch2 := []*string{&testMessage2}
+	batch2 := []string{testMessage2}
 
 	s.send(batch)
 	s.send(batch2)
@@ -85,7 +85,7 @@ func TestSendBatchChannelTruncate(t *testing.T) {
 	returnedBatch := <-s.batches
 
 	assert.EqualValues(t, len(returnedBatch), 1)
-	assert.EqualValues(t, *returnedBatch[0], testMessage2)
+	assert.EqualValues(t, returnedBatch[0], testMessage2)
 	assert.True(t, strings.Contains(log.Logs[0], "Spilling over"))
 	assert.True(t, strings.Contains(log.Logs[1], "retrying batch"))
 }
@@ -95,12 +95,12 @@ func TestPollSendSuccess(t *testing.T) {
 	xRay := new(MockXRayClient)
 	xRay.On("PutTraceSegments", nil).Return("").Once()
 	s := segmentsBatch{
-		batches: make(chan []*string, 1),
+		batches: make(chan []string, 1),
 		xRay:    xRay,
 		done:    make(chan bool),
 	}
 	testMessage := "{\"id\":\"9472\""
-	batch := []*string{&testMessage}
+	batch := []string{testMessage}
 	s.send(batch)
 
 	go s.poll()
@@ -118,12 +118,12 @@ func TestPutTraceSegmentsParameters(t *testing.T) {
 	xRay.On("PutTraceSegments", nil).Return("").Once()
 
 	s := segmentsBatch{
-		batches: make(chan []*string, 1),
+		batches: make(chan []string, 1),
 		xRay:    xRay,
 		done:    make(chan bool),
 	}
 	testMessage := "{\"id\":\"9472\""
-	batch := []*string{&testMessage}
+	batch := []string{testMessage}
 	s.send(batch)
 
 	go s.poll()
@@ -132,15 +132,8 @@ func TestPutTraceSegmentsParameters(t *testing.T) {
 	<-s.done
 	actualInput := xRay.input
 
-	// Convert batch []*string to []string for comparison
-	segments := make([]string, len(batch))
-	for i, seg := range batch {
-		if seg != nil {
-			segments[i] = *seg
-		}
-	}
 	expectedInput := &xray.PutTraceSegmentsInput{
-		TraceSegmentDocuments: segments,
+		TraceSegmentDocuments: batch,
 	}
 
 	assert.EqualValues(t, actualInput, expectedInput)
@@ -154,12 +147,12 @@ func TestPollSendReturnUnprocessed(t *testing.T) {
 	xRay := new(MockXRayClient)
 	xRay.On("PutTraceSegments", nil).Return("Send unprocessed").Once()
 	s := segmentsBatch{
-		batches: make(chan []*string, 1),
+		batches: make(chan []string, 1),
 		xRay:    xRay,
 		done:    make(chan bool),
 	}
 	testMessage := "{\"id\":\"9472\""
-	batch := []*string{&testMessage}
+	batch := []string{testMessage}
 	s.send(batch)
 
 	go s.poll()
@@ -176,12 +169,12 @@ func TestPollSendReturnUnprocessedInvalid(t *testing.T) {
 	xRay := new(MockXRayClient)
 	xRay.On("PutTraceSegments", nil).Return("Send Invalid").Once()
 	s := segmentsBatch{
-		batches: make(chan []*string, 1),
+		batches: make(chan []string, 1),
 		xRay:    xRay,
 		done:    make(chan bool),
 	}
 	testMessage := "{\"id\":\"9472\""
-	batch := []*string{&testMessage}
+	batch := []string{testMessage}
 	s.send(batch)
 
 	go s.poll()
