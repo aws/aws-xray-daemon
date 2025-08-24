@@ -72,12 +72,12 @@ func TestAddTelemetryRecord(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *types.TelemetryRecord, 1),
+		recordChan:    make(chan types.TelemetryRecord, 1),
 		postTelemetry: true,
 	}
 
-	telemetry.add(getEmptyTelemetryRecord())
-	telemetry.add(getEmptyTelemetryRecord())
+	telemetry.add(*getEmptyTelemetryRecord())
+	telemetry.add(*getEmptyTelemetryRecord())
 
 	assert.True(t, strings.Contains(log.Logs[0], "Telemetry Buffers truncated"))
 }
@@ -97,10 +97,10 @@ func TestSendRecordSuccess(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *types.TelemetryRecord, 1),
+		recordChan:    make(chan types.TelemetryRecord, 1),
 	}
-	records := make([]*types.TelemetryRecord, 1)
-	records[0] = getEmptyTelemetryRecord()
+	records := make([]types.TelemetryRecord, 1)
+	records[0] = *getEmptyTelemetryRecord()
 	telemetry.sendRecords(context.Background(), records)
 
 	assert.EqualValues(t, xRay.CallNoToPutTelemetryRecords, 1)
@@ -120,10 +120,10 @@ func TestAddRecordWithPostSegmentFalse(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *types.TelemetryRecord, 1),
+		recordChan:    make(chan types.TelemetryRecord, 1),
 	}
 
-	telemetry.add(getEmptyTelemetryRecord())
+	telemetry.add(*getEmptyTelemetryRecord())
 
 	assert.True(t, strings.Contains(log.Logs[0], "Skipped telemetry data as no segments found"))
 }
@@ -141,18 +141,18 @@ func TestAddRecordBeforeFirstSegmentAndAfter(t *testing.T) {
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *types.TelemetryRecord, 1),
+		recordChan:    make(chan types.TelemetryRecord, 1),
 	}
 
 	// No Segment received
-	telemetry.add(getEmptyTelemetryRecord())
+	telemetry.add(*getEmptyTelemetryRecord())
 
 	assert.True(t, strings.Contains(log.Logs[0], "Skipped telemetry data as no segments found"))
 
 	// Segment received
 	telemetry.SegmentReceived(1)
-	telemetry.add(getEmptyTelemetryRecord())
-	telemetry.add(getEmptyTelemetryRecord())
+	telemetry.add(*getEmptyTelemetryRecord())
+	telemetry.add(*getEmptyTelemetryRecord())
 
 	assert.True(t, strings.Contains(log.Logs[1], "Telemetry Buffers truncated"))
 }

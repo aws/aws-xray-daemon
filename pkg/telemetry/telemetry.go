@@ -65,7 +65,7 @@ type Telemetry struct {
 	Quit chan bool
 
 	// Channel of TelemetryRecord used to send to X-Ray service.
-	recordChan chan *types.TelemetryRecord
+	recordChan chan types.TelemetryRecord
 
 	// When segment is received, postTelemetry is set to true,
 	// indicating send telemetry data for the received segment.
@@ -230,7 +230,7 @@ func newT(ctx context.Context, cfg aws.Config, resourceARN string, noMetadata bo
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *types.TelemetryRecord, bufferSize),
+		recordChan:    make(chan types.TelemetryRecord, bufferSize),
 		postTelemetry: false,
 	}
 	telemetryClient := conn.NewXRay(cfg)
@@ -282,7 +282,7 @@ func (t *Telemetry) pushData(ctx context.Context) {
 		currentTime := time.Now()
 		record := (*types.TelemetryRecord)(recordToReport)
 		record.Timestamp = &currentTime
-		t.add(record)
+		t.add(*record)
 		t.sendAll(ctx)
 		if quit {
 			close(t.recordChan)
@@ -295,7 +295,7 @@ func (t *Telemetry) pushData(ctx context.Context) {
 	}
 }
 
-func (t *Telemetry) add(record *types.TelemetryRecord) {
+func (t *Telemetry) add(record types.TelemetryRecord) {
 	// Only send telemetry data when we receive first segment or else do not send any telemetry data.
 	if t.postTelemetry {
 		select {
@@ -327,10 +327,9 @@ func (t *Telemetry) sendAll(ctx context.Context) {
 	}
 }
 
-func (t *Telemetry) collectAllRecords() []*types.TelemetryRecord {
-	records := make([]*types.TelemetryRecord, bufferSize)
-	records = records[:0]
-	var record *types.TelemetryRecord
+func (t *Telemetry) collectAllRecords() []types.TelemetryRecord {
+	records := make([]types.TelemetryRecord, 0, bufferSize)
+	var record types.TelemetryRecord
 	done := false
 	for !done {
 		select {
@@ -346,7 +345,7 @@ func (t *Telemetry) collectAllRecords() []*types.TelemetryRecord {
 	return records
 }
 
-func (t *Telemetry) sendRecords(ctx context.Context, records []*types.TelemetryRecord) ([]*types.TelemetryRecord, error) {
+func (t *Telemetry) sendRecords(ctx context.Context, records []types.TelemetryRecord) ([]types.TelemetryRecord, error) {
 	if len(records) > 0 {
 		for i := 0; i < len(records); i = i + requestSize {
 			endIndex := len(records)
@@ -354,18 +353,11 @@ func (t *Telemetry) sendRecords(ctx context.Context, records []*types.TelemetryR
 				endIndex = i + requestSize
 			}
 			recordsToSend := records[i:endIndex]
-			// Convert []*types.TelemetryRecord to []types.TelemetryRecord
-			telemetryRecords := make([]types.TelemetryRecord, len(recordsToSend))
-			for j, rec := range recordsToSend {
-				if rec != nil {
-					telemetryRecords[j] = *rec
-				}
-			}
 			input := xray.PutTelemetryRecordsInput{
 				EC2InstanceId:    &t.instanceID,
 				Hostname:         &t.hostname,
 				ResourceARN:      &t.resourceARN,
-				TelemetryRecords: telemetryRecords,
+				TelemetryRecords: recordsToSend,
 			}
 			_, err := t.client.PutTelemetryRecords(ctx, &input)
 			if err != nil {
