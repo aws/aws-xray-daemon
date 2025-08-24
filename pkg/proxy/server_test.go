@@ -198,3 +198,25 @@ func TestEndpoint9(t *testing.T) {
 	assert.Equal(t, e, result, "creating endpoint from region")
 	assert.Nil(t, err)
 }
+
+// Testing ISO region (us-iso)
+func TestEndpoint10(t *testing.T) {
+	e := "https://xray.us-iso-east-1.c2s.ic.gov"
+	awsCfg := aws.Config{
+		Region: "us-iso-east-1",
+	}
+	result, err := getServiceEndpoint(&awsCfg)
+	assert.Equal(t, e, result, "creating endpoint for ISO region")
+	assert.Nil(t, err)
+}
+
+// Testing ISO-B region (us-isob)
+func TestEndpoint11(t *testing.T) {
+	e := "https://xray.us-isob-east-1.sc2s.sgov.gov"
+	awsCfg := aws.Config{
+		Region: "us-isob-east-1",
+	}
+	result, err := getServiceEndpoint(&awsCfg)
+	assert.Equal(t, e, result, "creating endpoint for ISO-B region")
+	assert.Nil(t, err)
+}

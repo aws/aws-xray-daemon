@@ -329,8 +329,6 @@ func getDefaultConfig(ctx context.Context) (aws.Config, error) {
 }
 
 // getPartition return AWS Partition for the provided region.
-// Note: This method only returns correct results for Commercial/Gov/CN regions.
-// ISO regions (aws-iso, aws-iso-b) are not supported and will default to "aws".
 func getPartition(region string) string {
 	// Simplified partition detection based on region prefixes
 	if strings.HasPrefix(region, "cn-") {
@@ -338,6 +336,12 @@ func getPartition(region string) string {
 	}
 	if strings.HasPrefix(region, "us-gov-") {
 		return PartitionAWSUSGov
+	}
+	if strings.HasPrefix(region, "us-iso-") {
+		return PartitionAWSISO
+	}
+	if strings.HasPrefix(region, "us-isob-") {
+		return PartitionAWSISOB
 	}
 	// Check if it's a valid AWS region pattern
 	if strings.Contains(region, "-") {

@@ -19,4 +19,25 @@ const (
 	
 	// PartitionAWSUSGov is the AWS GovCloud (US) partition
 	PartitionAWSUSGov = "aws-us-gov"
+	
+	// PartitionAWSISO is the AWS ISO (US) partition
+	PartitionAWSISO = "aws-iso"
+	
+	// PartitionAWSISOB is the AWS ISO-B (US) partition
+	PartitionAWSISOB = "aws-iso-b"
+)
+
+// AWS domain suffixes for different partitions
+const (
+	// DomainSuffixAWS is the domain suffix for standard AWS regions
+	DomainSuffixAWS = "amazonaws.com"
+	
+	// DomainSuffixAWSCN is the domain suffix for AWS China regions
+	DomainSuffixAWSCN = "amazonaws.com.cn"
+	
+	// DomainSuffixAWSISO is the domain suffix for AWS ISO regions
+	DomainSuffixAWSISO = "c2s.ic.gov"
+	
+	// DomainSuffixAWSISOB is the domain suffix for AWS ISO-B regions
+	DomainSuffixAWSISOB = "sc2s.sgov.gov"
 )

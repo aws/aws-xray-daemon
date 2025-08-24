@@ -15,6 +15,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -184,12 +185,22 @@ func getServiceEndpoint(awsCfg *aws.Config) (string, error) {
 		return "", errors.New("unable to generate endpoint from region with empty value")
 	}
 	
-	// Generate standard X-Ray endpoint
-	// For most regions, the endpoint is: https://xray.{region}.amazonaws.com
-	// For China regions: https://xray.{region}.amazonaws.com.cn
-	endpoint := fmt.Sprintf("https://xray.%s.amazonaws.com", awsCfg.Region)
-	if awsCfg.Region == "cn-north-1" || awsCfg.Region == "cn-northwest-1" {
-		endpoint = fmt.Sprintf("https://xray.%s.amazonaws.com.cn", awsCfg.Region)
+	// Generate X-Ray endpoint based on region partition
+	var endpoint string
+	
+	// Handle special partitions
+	if strings.HasPrefix(awsCfg.Region, "cn-") {
+		// China regions
+		endpoint = fmt.Sprintf("https://xray.%s.%s", awsCfg.Region, conn.DomainSuffixAWSCN)
+	} else if strings.HasPrefix(awsCfg.Region, "us-iso-") {
+		// ISO regions (US Isolated)
+		endpoint = fmt.Sprintf("https://xray.%s.%s", awsCfg.Region, conn.DomainSuffixAWSISO)
+	} else if strings.HasPrefix(awsCfg.Region, "us-isob-") {
+		// ISO-B regions (US Isolated-B)
+		endpoint = fmt.Sprintf("https://xray.%s.%s", awsCfg.Region, conn.DomainSuffixAWSISOB)
+	} else {
+		// Standard AWS regions (including GovCloud)
+		endpoint = fmt.Sprintf("https://xray.%s.%s", awsCfg.Region, conn.DomainSuffixAWS)
 	}
 	
 	return endpoint, nil
