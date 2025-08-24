@@ -203,6 +203,9 @@ func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn
 	if c.Endpoint != "" {
 		cfg.BaseEndpoint = aws.String(c.Endpoint)
 	}
+	// When c.Endpoint is empty, the SDK will use the default X-Ray endpoint for the region.
+	// This is the expected behavior for normal operation - custom endpoints are only used
+	// for testing or special deployments.
 	cfg.HTTPClient = http
 
 	return cfg, nil
