@@ -172,15 +172,19 @@ func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn
 				if err != nil {
 					log.Errorf("Unable to fetch region from EC2 metadata: %v\n", err)
 				} else {
-					log.Debugf("Fetch region %v from ec2 metadata", awsRegion)
+					log.Debugf("Fetch region %s from ec2 metadata", awsRegion)
 				}
+			} else {
+				log.Errorf("Unable to get default config: %v", err)
 			}
 		}
 	} else {
 		tempCfg, err := getDefaultConfig(ctx)
 		if err == nil {
 			awsRegion = tempCfg.Region
-			log.Debugf("Fetched region %v from config", awsRegion)
+			log.Debugf("Fetched region %s from config", awsRegion)
+		} else {
+			log.Errorf("Unable to get default config: %v", err)
 		}
 	}
 	if awsRegion == "" {
@@ -262,7 +266,7 @@ func getSTSCreds(ctx context.Context, cfg aws.Config, region string, roleArn str
 		var ae smithy.APIError
 		if errors.As(err, &ae) {
 			if ae.ErrorCode() == "RegionDisabledException" {
-				log.Errorf("Region : %v - %v", region, ae.ErrorMessage())
+				log.Errorf("Region : %s - %s", region, ae.ErrorMessage())
 				log.Info("Credentials for provided RoleARN will be fetched from STS primary region endpoint instead of regional endpoint.")
 				stsCred = getSTSCredsFromPrimaryRegionEndpoint(ctx, cfg, roleArn, region)
 			}
@@ -280,9 +284,10 @@ func getSTSCredsFromRegionEndpoint(ctx context.Context, cfg aws.Config, region s
 	cfg.Region = region
 	if regionalEndpoint != "" {
 		cfg.BaseEndpoint = aws.String(regionalEndpoint)
+		log.Infof("Using STS regional endpoint: %s", regionalEndpoint)
 	}
 	stsClient := sts.NewFromConfig(cfg)
-	log.Infof("STS Region : %v", region)
+	log.Infof("STS Region : %s", region)
 	return stscreds.NewAssumeRoleProvider(stsClient, roleArn)
 }
 
@@ -324,6 +329,8 @@ func getDefaultConfig(ctx context.Context) (aws.Config, error) {
 }
 
 // getPartition return AWS Partition for the provided region.
+// Note: This method only returns correct results for Commercial/Gov/CN regions.
+// ISO regions (aws-iso, aws-iso-b) are not supported and will default to "aws".
 func getPartition(region string) string {
 	// Simplified partition detection based on region prefixes
 	if strings.HasPrefix(region, "cn-") {

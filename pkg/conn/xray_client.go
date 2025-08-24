@@ -61,6 +61,7 @@ func NewXRay(cfg aws.Config) XRay {
 	}
 
 	osInformation := runtime.GOOS + "-" + runtime.GOARCH
+	// User agent format: xray-daemon/3.x.x exec-env/ECS os/linux-amd64
 	userAgent := agentPrefix + daemoncfg.Version + execEnvPrefix + execEnv + osPrefix + osInformation
 
 	// Create X-Ray client with custom options
@@ -106,6 +107,7 @@ func IsTimeoutError(err error) bool {
 	}
 	
 	// Check for timeout errors
+	// These string values are based on standard Go error messages and AWS SDK v2 timeout errors
 	if strings.Contains(err.Error(), "request canceled") ||
 		strings.Contains(err.Error(), "deadline exceeded") ||
 		strings.Contains(err.Error(), "timeout") {

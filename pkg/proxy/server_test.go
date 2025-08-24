@@ -108,6 +108,7 @@ func TestEndpoint1(t *testing.T) {
 			}),
 		Region: "us-west-1",
 	}
+	// Endpoint value has higher priority than region value
 	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "Fetching endpoint from config instance")
 	assert.Nil(t, err)

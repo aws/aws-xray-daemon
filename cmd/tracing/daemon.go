@@ -197,7 +197,7 @@ func initDaemon(config *cfg.Config) *Daemon {
 		log.Errorf("Unable to get AWS config: %v", err)
 		os.Exit(1)
 	}
-	log.Infof("Using region: %v", awsConfig.Region)
+	log.Infof("Using region: %s", awsConfig.Region)
 
 	log.Debugf("ARN of the AWS resource running the daemon: %v", resourceARN)
 	telemetry.Init(ctx, awsConfig, resourceARN, noMetadata)

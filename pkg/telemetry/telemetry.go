@@ -91,7 +91,7 @@ func EvaluateConnectionError(err error) {
 		} else {
 			T.ConnectionOther(1)
 		}
-		}
+	}
 	} else {
 		if conn.IsTimeoutError(err) {
 			T.ConnectionTimeout(1)
@@ -192,7 +192,7 @@ func newT(ctx context.Context, cfg aws.Config, resourceARN string, noMetadata bo
 			if output.Content != nil {
 				data, _ := io.ReadAll(output.Content)
 				hostname = string(data)
-				log.Debugf("Using %v hostname for telemetry records", hostname)
+				log.Debugf("Using %s hostname for telemetry records", hostname)
 			}
 		}
 	} else {
@@ -214,7 +214,7 @@ func newT(ctx context.Context, cfg aws.Config, resourceARN string, noMetadata bo
 			if output.Content != nil {
 				data, _ := io.ReadAll(output.Content)
 				instanceID = string(data)
-				log.Debugf("Using %v Instance Id for Telemetry records", instanceID)
+				log.Debugf("Using %s Instance Id for Telemetry records", instanceID)
 			}
 		}
 	} else {
