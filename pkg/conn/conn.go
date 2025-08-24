@@ -295,11 +295,11 @@ func getSTSCredsFromRegionEndpoint(ctx context.Context, cfg aws.Config, region s
 // respective partition.
 func getSTSCredsFromPrimaryRegionEndpoint(ctx context.Context, cfg aws.Config, roleArn string, region string) aws.CredentialsProvider {
 	partitionId := getPartition(region)
-	if partitionId == "aws" {
+	if partitionId == PartitionAWS {
 		return getSTSCredsFromRegionEndpoint(ctx, cfg, "us-east-1", roleArn)
-	} else if partitionId == "aws-cn" {
+	} else if partitionId == PartitionAWSCN {
 		return getSTSCredsFromRegionEndpoint(ctx, cfg, "cn-north-1", roleArn)
-	} else if partitionId == "aws-us-gov" {
+	} else if partitionId == PartitionAWSUSGov {
 		return getSTSCredsFromRegionEndpoint(ctx, cfg, "us-gov-west-1", roleArn)
 	}
 
@@ -310,9 +310,9 @@ func getSTSRegionalEndpoint(r string) string {
 	p := getPartition(r)
 
 	var e string
-	if p == "aws" || p == "aws-us-gov" {
+	if p == PartitionAWS || p == PartitionAWSUSGov {
 		e = STSEndpointPrefix + r + STSEndpointSuffix
-	} else if p == "aws-cn" {
+	} else if p == PartitionAWSCN {
 		e = STSEndpointPrefix + r + STSAwsCnPartitionIDSuffix
 	}
 	return e
@@ -334,14 +334,14 @@ func getDefaultConfig(ctx context.Context) (aws.Config, error) {
 func getPartition(region string) string {
 	// Simplified partition detection based on region prefixes
 	if strings.HasPrefix(region, "cn-") {
-		return "aws-cn"
+		return PartitionAWSCN
 	}
 	if strings.HasPrefix(region, "us-gov-") {
-		return "aws-us-gov"
+		return PartitionAWSUSGov
 	}
 	// Check if it's a valid AWS region pattern
 	if strings.Contains(region, "-") {
-		return "aws"
+		return PartitionAWS
 	}
 	// Return empty for invalid regions
 	return ""

@@ -171,19 +171,19 @@ func TestGetProxyAddressPriority(t *testing.T) {
 func TestGetPartition1(t *testing.T) {
 	r := "us-east-1"
 	p := getPartition(r)
-	assert.Equal(t, "aws", p)
+	assert.Equal(t, PartitionAWS, p)
 }
 
 func TestGetPartition2(t *testing.T) {
 	r := "cn-north-1"
 	p := getPartition(r)
-	assert.Equal(t, "aws-cn", p)
+	assert.Equal(t, PartitionAWSCN, p)
 }
 
 func TestGetPartition3(t *testing.T) {
 	r := "us-gov-east-1"
 	p := getPartition(r)
-	assert.Equal(t, "aws-us-gov", p)
+	assert.Equal(t, PartitionAWSUSGov, p)
 }
 
 func TestGetPartition4(t *testing.T) { // if a region is not present in the array
