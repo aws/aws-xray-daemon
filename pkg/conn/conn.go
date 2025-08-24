@@ -13,7 +13,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -26,7 +25,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/aws/smithy-go"
 	daemoncfg "github.com/aws/aws-xray-daemon/pkg/cfg"
 	log "github.com/cihub/seelog"
 	"golang.org/x/net/http2"
@@ -48,12 +46,6 @@ func (c *Conn) getEC2Region(ctx context.Context, cfg aws.Config) (string, error)
 	}
 	return regionResp.Region, nil
 }
-
-const (
-	STSEndpointPrefix         = "https://sts."
-	STSEndpointSuffix         = ".amazonaws.com"
-	STSAwsCnPartitionIDSuffix = ".amazonaws.com.cn" // AWS China partition.
-)
 
 // getNewHTTPClient returns new HTTP client instance with provided configuration.
 func getNewHTTPClient(maxIdle int, requestTimeout int, noVerify bool, proxyAddress string) *http.Client {
@@ -252,74 +244,15 @@ func (c *Conn) newAWSConfig(ctx context.Context, roleArn string, region string) 
 	}
 
 	// Use STS to assume role
-	stsCreds := getSTSCreds(ctx, cfg, region, roleArn)
-	cfg.Credentials = stsCreds
+	// Following OTel's simpler approach - SDK v2 handles regional endpoints automatically
+	cfg.Region = region
+	stsClient := sts.NewFromConfig(cfg)
+	cfg.Credentials = stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(o *stscreds.AssumeRoleOptions) {
+		o.RoleSessionName = "xray-daemon"
+	})
 	return cfg, nil
 }
 
-// getSTSCreds gets STS credentials from regional endpoint. RegionDisabledException is received if the
-// STS regional endpoint is disabled. In this case STS credentials are fetched from STS primary regional endpoint
-// in the respective AWS partition.
-func getSTSCreds(ctx context.Context, cfg aws.Config, region string, roleArn string) aws.CredentialsProvider {
-	stsCred := getSTSCredsFromRegionEndpoint(ctx, cfg, region, roleArn)
-	
-	// Test if credentials work
-	_, err := stsCred.Retrieve(ctx)
-	if err != nil {
-		var ae smithy.APIError
-		if errors.As(err, &ae) {
-			if ae.ErrorCode() == "RegionDisabledException" {
-				log.Errorf("Region : %s - %s", region, ae.ErrorMessage())
-				log.Info("Credentials for provided RoleARN will be fetched from STS primary region endpoint instead of regional endpoint.")
-				stsCred = getSTSCredsFromPrimaryRegionEndpoint(ctx, cfg, roleArn, region)
-			}
-		}
-	}
-	return stsCred
-}
-
-// getSTSCredsFromRegionEndpoint fetches STS credentials for provided roleARN from regional endpoint.
-// AWS STS recommends that you provide both the Region and endpoint when you make calls to a Regional endpoint.
-// Reference: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html#id_credentials_temp_enable-regions_writing_code
-func getSTSCredsFromRegionEndpoint(ctx context.Context, cfg aws.Config, region string, roleArn string) aws.CredentialsProvider {
-	regionalEndpoint := getSTSRegionalEndpoint(region)
-	// Configure STS client with regional endpoint
-	cfg.Region = region
-	if regionalEndpoint != "" {
-		cfg.BaseEndpoint = aws.String(regionalEndpoint)
-		log.Infof("Using STS regional endpoint: %s", regionalEndpoint)
-	}
-	stsClient := sts.NewFromConfig(cfg)
-	log.Infof("STS Region : %s", region)
-	return stscreds.NewAssumeRoleProvider(stsClient, roleArn)
-}
-
-// getSTSCredsFromPrimaryRegionEndpoint fetches STS credentials for provided roleARN from primary region endpoint in the
-// respective partition.
-func getSTSCredsFromPrimaryRegionEndpoint(ctx context.Context, cfg aws.Config, roleArn string, region string) aws.CredentialsProvider {
-	partitionId := getPartition(region)
-	if partitionId == PartitionAWS {
-		return getSTSCredsFromRegionEndpoint(ctx, cfg, "us-east-1", roleArn)
-	} else if partitionId == PartitionAWSCN {
-		return getSTSCredsFromRegionEndpoint(ctx, cfg, "cn-north-1", roleArn)
-	} else if partitionId == PartitionAWSUSGov {
-		return getSTSCredsFromRegionEndpoint(ctx, cfg, "us-gov-west-1", roleArn)
-	}
-
-	return nil
-}
-
-func getSTSRegionalEndpoint(r string) string {
-	p := getPartition(r)
-
-	var e string
-	if p == PartitionAWS || p == PartitionAWSUSGov {
-		e = STSEndpointPrefix + r + STSEndpointSuffix
-	} else if p == PartitionAWSCN {
-		e = STSEndpointPrefix + r + STSAwsCnPartitionIDSuffix
-	}
-	return e
-}
 
 func getDefaultConfig(ctx context.Context) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,

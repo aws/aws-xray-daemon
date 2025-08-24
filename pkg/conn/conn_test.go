@@ -192,29 +192,6 @@ func TestGetPartition4(t *testing.T) { // if a region is not present in the arra
 	assert.Equal(t, "", p)
 }
 
-func TestGetSTSRegionalEndpoint1(t *testing.T) {
-	r := "us-east-1"
-	p := getSTSRegionalEndpoint(r)
-	assert.Equal(t, "https://sts.us-east-1.amazonaws.com", p)
-}
-
-func TestGetSTSRegionalEndpoint2(t *testing.T) {
-	r := "cn-north-1"
-	p := getSTSRegionalEndpoint(r)
-	assert.Equal(t, "https://sts.cn-north-1.amazonaws.com.cn", p)
-}
-
-func TestGetSTSRegionalEndpoint3(t *testing.T) {
-	r := "us-gov-east-1"
-	p := getSTSRegionalEndpoint(r)
-	assert.Equal(t, "https://sts.us-gov-east-1.amazonaws.com", p)
-}
-
-func TestGetSTSRegionalEndpoint4(t *testing.T) { // if a region is not present in the array
-	r := "XYZ"
-	p := getPartition(r)
-	assert.Equal(t, "", p)
-}
 
 func stashEnv() []string {
 	env := os.Environ()
