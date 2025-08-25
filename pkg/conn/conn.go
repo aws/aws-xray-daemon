@@ -247,9 +247,11 @@ func (c *Conn) newAWSConfig(ctx context.Context, roleArn string, region string) 
 	// Following OTel's simpler approach - SDK v2 handles regional endpoints automatically
 	cfg.Region = region
 	stsClient := sts.NewFromConfig(cfg)
-	cfg.Credentials = stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(o *stscreds.AssumeRoleOptions) {
+	provider := stscreds.NewAssumeRoleProvider(stsClient, roleArn, func(o *stscreds.AssumeRoleOptions) {
 		o.RoleSessionName = "xray-daemon"
 	})
+	// Wrap provider in credentials cache for thread-safe credential management and caching
+	cfg.Credentials = aws.NewCredentialsCache(provider)
 	return cfg, nil
 }
 
