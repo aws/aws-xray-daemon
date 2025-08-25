@@ -1,11 +1,26 @@
 [![Build Status](https://travis-ci.org/aws/aws-xray-daemon.svg?branch=master)](https://travis-ci.org/aws/aws-xray-daemon)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aws/aws-xray-daemon)](https://goreportcard.com/report/github.com/aws/aws-xray-daemon)
 
-# AWS X-Ray Daemon  
+# AWS X-Ray Daemon
 
 The AWS X-Ray daemon is a software application that listens for traffic on UDP port 2000, gathers raw segment data, and relays it to the AWS X-Ray API.   
 The daemon works in conjunction with the AWS X-Ray SDKs and must be running so that data sent by the SDKs can reach the X-Ray service. For more information,
  see [AWS X-Ray Daemon](https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon.html).
+
+## :mega: Upcoming Maintenance Mode on February 25, 2026
+
+[The AWS X-Ray Daemon will enter maintenance mode on **`February 25, 2026`**][xray-sdk-daemon-timeline]. During maintenance mode, the X-Ray SDKs and Daemon will only receive critical bug fixes and security updates, and will not be updated to support new features.
+
+We recommend that you migrate to [AWS Distro for OpenTelemetry (ADOT) or OpenTelemetry Instrumentation][xray-otel-migration-docs] to generate traces (through manual or zero-code instrumentation) from your application and send them to AWS X-Ray. OpenTelemetry is the industry-wide standard for tracing instrumentation and observability. It has a large open-source community for support and provides more instrumentations and updates. By adopting an OpenTelemetry solution, developers can leverage the latest services and innovations from AWS CloudWatch.
+
+To gather traces from OpenTelemetry instrumentation and relay them to AWS X-Ray, you can use OpenTelemetry-compatible solutions such as the CloudWatch Agent, or the OpenTelemetry Collector. Read more about migrating to OpenTelemetry-compatible solutions to replace the X-Ray Daemon in the [migration guide][xray-otel-migration-docs].
+
+## :mega: End-of-Support on February 25, 2027
+
+[The AWS X-Ray Daemon will reach end-of-support on **`February 25, 2027`**][xray-sdk-daemon-timeline]. After end-of-support, the X-Ray Daemon will no longer receive updates or releases. Previously published releases will continue to be available via S3, Public ECR, and Docker Hub, and the source code will remain on GitHub.
+
+[xray-otel-migration-docs]: https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-migration.html
+[xray-sdk-daemon-timeline]: https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon-eos.html
 
 ## Getting Help  
 
