@@ -84,14 +84,14 @@ func EvaluateConnectionError(err error) {
 	if errors.As(err, &oe) {
 		if httpErr, ok := oe.Err.(*smithyhttp.ResponseError); ok {
 			statusCode := httpErr.Response.StatusCode
-		if statusCode >= 500 && statusCode < 600 {
-			T.Connection5xx(1)
-		} else if statusCode >= 400 && statusCode < 500 {
-			T.Connection4xx(1)
-		} else {
-			T.ConnectionOther(1)
+			if statusCode >= 500 && statusCode < 600 {
+				T.Connection5xx(1)
+			} else if statusCode >= 400 && statusCode < 500 {
+				T.Connection4xx(1)
+			} else {
+				T.ConnectionOther(1)
+			}
 		}
-	}
 	} else {
 		if conn.IsTimeoutError(err) {
 			T.ConnectionTimeout(1)
