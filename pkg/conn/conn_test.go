@@ -41,10 +41,6 @@ func clearTestFile() {
 	os.Remove(tstFilePath)
 }
 
-
-
-
-
 // getRegionFromECSMetadata() returns a valid region from an appropriate JSON file
 func TestValidECSRegion(t *testing.T) {
 	metadataFile :=
@@ -93,15 +89,16 @@ func TestValidECSRegion(t *testing.T) {
 }
 
 // getRegionFromECSMetadata() returns an empty string if ECS metadata related env is not set
-func TestNoECSMetadata(t *testing.T){
+func TestNoECSMetadata(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
 	testString := getRegionFromECSMetadata()
 
 	assert.EqualValues(t, "", testString)
 }
+
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be parsed as valid JSON
-func TestInvalidECSMetadata(t *testing.T){
+func TestInvalidECSMetadata(t *testing.T) {
 	metadataFile := "][foobar})("
 	setupTestFile(metadataFile)
 	env := stashEnv()
@@ -119,7 +116,7 @@ func TestInvalidECSMetadata(t *testing.T){
 }
 
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be opened
-func TestMissingECSMetadataFile(t *testing.T){
+func TestMissingECSMetadataFile(t *testing.T) {
 	metadataFile := "foobar"
 	setupTestFile(metadataFile)
 	env := stashEnv()
@@ -135,9 +132,6 @@ func TestMissingECSMetadataFile(t *testing.T){
 	assert.EqualValues(t, "", testString)
 	assert.True(t, strings.Contains(log.Logs[0], "Unable to open"))
 }
-
-
-
 
 func TestGetProxyAddressFromEnvVariable(t *testing.T) {
 	env := stashEnv()
@@ -169,55 +163,19 @@ func TestGetProxyAddressPriority(t *testing.T) {
 	assert.Equal(t, "https://127.0.0.1:9999", getProxyAddress("https://127.0.0.1:9999"), "Expect function return value to be same with input")
 }
 
-func TestGetPartition1(t *testing.T) {
-	r := "us-east-1"
-	p := getPartition(r)
-	assert.Equal(t, PartitionAWS, p)
-}
-
-func TestGetPartition2(t *testing.T) {
-	r := "cn-north-1"
-	p := getPartition(r)
-	assert.Equal(t, PartitionAWSCN, p)
-}
-
-func TestGetPartition3(t *testing.T) {
-	r := "us-gov-east-1"
-	p := getPartition(r)
-	assert.Equal(t, PartitionAWSUSGov, p)
-}
-
-func TestGetPartition4(t *testing.T) { // if a region is not present in the array
-	r := "XYZ"
-	p := getPartition(r)
-	assert.Equal(t, "", p)
-}
-
-func TestGetPartition5(t *testing.T) {
-	r := "us-iso-east-1"
-	p := getPartition(r)
-	assert.Equal(t, PartitionAWSISO, p)
-}
-
-func TestGetPartition6(t *testing.T) {
-	r := "us-isob-east-1"
-	p := getPartition(r)
-	assert.Equal(t, PartitionAWSISOB, p)
-}
-
 // TestNewAWSConfigWithoutRole tests that newAWSConfig returns default config when no role is provided
 func TestNewAWSConfigWithoutRole(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
-	
+
 	// Set minimal credentials to prevent SDK from searching
 	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
 	os.Setenv("AWS_REGION", "us-east-1")
-	
+
 	c := &Conn{}
 	cfg, err := c.newAWSConfig(context.Background(), "", "us-east-1")
-	
+
 	assert.NoError(t, err)
 	assert.Equal(t, "us-east-1", cfg.Region)
 }
@@ -226,16 +184,16 @@ func TestNewAWSConfigWithoutRole(t *testing.T) {
 func TestNewAWSConfigWithRole(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
-	
+
 	// Set minimal credentials to prevent SDK from searching
 	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
 	os.Setenv("AWS_REGION", "us-west-2")
-	
+
 	c := &Conn{}
 	roleArn := "arn:aws:iam::123456789012:role/test-role"
 	cfg, err := c.newAWSConfig(context.Background(), roleArn, "us-west-2")
-	
+
 	assert.NoError(t, err)
 	assert.Equal(t, "us-west-2", cfg.Region)
 	// We can't easily test that the STS provider is configured correctly,
@@ -247,16 +205,16 @@ func TestNewAWSConfigWithRole(t *testing.T) {
 func TestGetEC2Region(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
-	
+
 	// Set credentials to prevent SDK from searching
 	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
 	// Disable IMDS to force a timeout/error
 	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-	
+
 	c := &Conn{}
 	cfg, _ := getDefaultConfig(context.Background())
-	
+
 	// This should fail when IMDS is disabled or not on EC2
 	region, err := c.getEC2Region(context.Background(), cfg)
 	// Either we get an error (not on EC2) or empty region
@@ -271,14 +229,14 @@ func TestGetEC2Region(t *testing.T) {
 func TestGetDefaultConfig(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
-	
+
 	// Set minimal credentials and region
 	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
 	os.Setenv("AWS_REGION", "us-west-2")
-	
+
 	cfg, err := getDefaultConfig(context.Background())
-	
+
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
 	// SDK v2 will pick up the region from env
@@ -292,7 +250,7 @@ func TestGetProxyURL(t *testing.T) {
 	assert.NotNil(t, proxyURL)
 	assert.Equal(t, "https", proxyURL.Scheme)
 	assert.Equal(t, "127.0.0.1:8888", proxyURL.Host)
-	
+
 	// Empty proxy URL
 	proxyURL = getProxyURL("")
 	assert.Nil(t, proxyURL)

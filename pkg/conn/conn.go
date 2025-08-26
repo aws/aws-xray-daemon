@@ -255,7 +255,6 @@ func (c *Conn) newAWSConfig(ctx context.Context, roleArn string, region string) 
 	return cfg, nil
 }
 
-
 func getDefaultConfig(ctx context.Context) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithEC2IMDSRegion(),
@@ -264,27 +263,4 @@ func getDefaultConfig(ctx context.Context) (aws.Config, error) {
 		return aws.Config{}, err
 	}
 	return cfg, nil
-}
-
-// getPartition return AWS Partition for the provided region.
-func getPartition(region string) string {
-	// Simplified partition detection based on region prefixes
-	if strings.HasPrefix(region, "cn-") {
-		return PartitionAWSCN
-	}
-	if strings.HasPrefix(region, "us-gov-") {
-		return PartitionAWSUSGov
-	}
-	if strings.HasPrefix(region, "us-iso-") {
-		return PartitionAWSISO
-	}
-	if strings.HasPrefix(region, "us-isob-") {
-		return PartitionAWSISOB
-	}
-	// Check if it's a valid AWS region pattern
-	if strings.Contains(region, "-") {
-		return PartitionAWS
-	}
-	// Return empty for invalid regions
-	return ""
 }
