@@ -10,6 +10,9 @@
 package telemetry
 
 import (
+	"context"
+	"errors"
+	"io"
 	"os"
 	"sync/atomic"
 	"time"
@@ -18,11 +21,12 @@ import (
 	"github.com/aws/aws-xray-daemon/pkg/conn"
 	"github.com/aws/aws-xray-daemon/pkg/util/timer"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/ec2metadata"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/xray"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+	"github.com/aws/aws-sdk-go-v2/service/xray"
+	"github.com/aws/aws-sdk-go-v2/service/xray/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	log "github.com/cihub/seelog"
 )
 
@@ -49,7 +53,7 @@ type Telemetry struct {
 	hostname string
 
 	// Self pointer.
-	currentRecord *xray.TelemetryRecord
+	currentRecord *types.TelemetryRecord
 
 	// Timer channel.
 	timerChan <-chan time.Time
@@ -61,7 +65,7 @@ type Telemetry struct {
 	Quit chan bool
 
 	// Channel of TelemetryRecord used to send to X-Ray service.
-	recordChan chan *xray.TelemetryRecord
+	recordChan chan types.TelemetryRecord
 
 	// When segment is received, postTelemetry is set to true,
 	// indicating send telemetry data for the received segment.
@@ -69,30 +73,32 @@ type Telemetry struct {
 }
 
 // Init instantiates a new instance of Telemetry.
-func Init(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetadata bool) {
-	T = newT(awsConfig, s, resourceARN, noMetadata)
+func Init(ctx context.Context, cfg aws.Config, resourceARN string, noMetadata bool) {
+	T = newT(ctx, cfg, resourceARN, noMetadata)
 	log.Debug("Telemetry initiated")
 }
 
 // EvaluateConnectionError processes error with respect to request failure status code.
 func EvaluateConnectionError(err error) {
-	requestFailure, ok := err.(awserr.RequestFailure)
-	if ok {
-		statusCode := requestFailure.StatusCode()
-		if statusCode >= 500 && statusCode < 600 {
-			T.Connection5xx(1)
-		} else if statusCode >= 400 && statusCode < 500 {
-			T.Connection4xx(1)
-		} else {
-			T.ConnectionOther(1)
+	var oe *smithy.OperationError
+	if errors.As(err, &oe) {
+		if httpErr, ok := oe.Err.(*smithyhttp.ResponseError); ok {
+			statusCode := httpErr.Response.StatusCode
+			if statusCode >= 500 && statusCode < 600 {
+				T.Connection5xx(1)
+			} else if statusCode >= 400 && statusCode < 500 {
+				T.Connection4xx(1)
+			} else {
+				T.ConnectionOther(1)
+			}
 		}
 	} else {
 		if conn.IsTimeoutError(err) {
 			T.ConnectionTimeout(1)
 		} else {
-			awsError, ok := err.(awserr.Error)
-			if ok {
-				if awsError.Code() == "RequestError" {
+			var ae smithy.APIError
+			if errors.As(err, &ae) {
+				if ae.ErrorCode() == "RequestError" {
 					T.ConnectionUnknownHost(1)
 				}
 			} else {
@@ -111,64 +117,64 @@ func GetTestTelemetry() *Telemetry {
 
 // SegmentReceived increments SegmentsReceivedCount for the Telemetry record.
 func (t *Telemetry) SegmentReceived(count int64) {
-	atomic.AddInt64(t.currentRecord.SegmentsReceivedCount, count)
+	atomic.AddInt32(t.currentRecord.SegmentsReceivedCount, int32(count))
 	// Only send telemetry data when we receive any segment or else skip any telemetry data
 	t.postTelemetry = true
 }
 
 // SegmentSent increments SegmentsSentCount for the Telemetry record.
 func (t *Telemetry) SegmentSent(count int64) {
-	atomic.AddInt64(t.currentRecord.SegmentsSentCount, count)
+	atomic.AddInt32(t.currentRecord.SegmentsSentCount, int32(count))
 }
 
 // SegmentSpillover increments SegmentsSpilloverCount for the Telemetry record.
 func (t *Telemetry) SegmentSpillover(count int64) {
-	atomic.AddInt64(t.currentRecord.SegmentsSpilloverCount, count)
+	atomic.AddInt32(t.currentRecord.SegmentsSpilloverCount, int32(count))
 }
 
 // SegmentRejected increments SegmentsRejectedCount for the Telemetry record.
 func (t *Telemetry) SegmentRejected(count int64) {
-	atomic.AddInt64(t.currentRecord.SegmentsRejectedCount, count)
+	atomic.AddInt32(t.currentRecord.SegmentsRejectedCount, int32(count))
 }
 
 // ConnectionTimeout increments TimeoutCount for the Telemetry record.
 func (t *Telemetry) ConnectionTimeout(count int64) {
-	atomic.AddInt64(t.currentRecord.BackendConnectionErrors.TimeoutCount, count)
+	atomic.AddInt32(t.currentRecord.BackendConnectionErrors.TimeoutCount, int32(count))
 }
 
 // ConnectionRefusal increments ConnectionRefusedCount for the Telemetry record.
 func (t *Telemetry) ConnectionRefusal(count int64) {
-	atomic.AddInt64(t.currentRecord.BackendConnectionErrors.ConnectionRefusedCount, count)
+	atomic.AddInt32(t.currentRecord.BackendConnectionErrors.ConnectionRefusedCount, int32(count))
 }
 
 // Connection4xx increments HTTPCode4XXCount for the Telemetry record.
 func (t *Telemetry) Connection4xx(count int64) {
-	atomic.AddInt64(t.currentRecord.BackendConnectionErrors.HTTPCode4XXCount, count)
+	atomic.AddInt32(t.currentRecord.BackendConnectionErrors.HTTPCode4XXCount, int32(count))
 }
 
 // Connection5xx increments HTTPCode5XXCount count for the Telemetry record.
 func (t *Telemetry) Connection5xx(count int64) {
-	atomic.AddInt64(t.currentRecord.BackendConnectionErrors.HTTPCode5XXCount, count)
+	atomic.AddInt32(t.currentRecord.BackendConnectionErrors.HTTPCode5XXCount, int32(count))
 }
 
 // ConnectionUnknownHost increments unknown host BackendConnectionErrors count for the Telemetry record.
 func (t *Telemetry) ConnectionUnknownHost(count int64) {
-	atomic.AddInt64(t.currentRecord.BackendConnectionErrors.UnknownHostCount, count)
+	atomic.AddInt32(t.currentRecord.BackendConnectionErrors.UnknownHostCount, int32(count))
 }
 
 // ConnectionOther increments other BackendConnectionErrors count for the Telemetry record.
 func (t *Telemetry) ConnectionOther(count int64) {
-	atomic.AddInt64(t.currentRecord.BackendConnectionErrors.OtherCount, count)
+	atomic.AddInt32(t.currentRecord.BackendConnectionErrors.OtherCount, int32(count))
 }
 
-func newT(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetadata bool) *Telemetry {
+func newT(ctx context.Context, cfg aws.Config, resourceARN string, noMetadata bool) *Telemetry {
 	timer := &timer.Client{}
 	hostname := ""
 	instanceID := ""
 
-	var metadataClient *ec2metadata.EC2Metadata
+	var metadataClient *imds.Client
 	if !noMetadata {
-		metadataClient = ec2metadata.New(s)
+		metadataClient = imds.NewFromConfig(cfg)
 	}
 
 	hostnameEnv := os.Getenv("AWS_HOSTNAME")
@@ -176,12 +182,18 @@ func newT(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetad
 		hostname = hostnameEnv
 		log.Debugf("Fetch hostname %v from environment variables", hostnameEnv)
 	} else if metadataClient != nil {
-		hn, err := metadataClient.GetMetadata("hostname")
+		output, err := metadataClient.GetMetadata(ctx, &imds.GetMetadataInput{
+			Path: "hostname",
+		})
 		if err != nil {
 			log.Debugf("Get hostname metadata failed: %s", err)
 		} else {
-			hostname = hn
-			log.Debugf("Using %v hostname for telemetry records", hostname)
+			// Read the content from the response
+			if output.Content != nil {
+				data, _ := io.ReadAll(output.Content)
+				hostname = string(data)
+				log.Debugf("Using %s hostname for telemetry records", hostname)
+			}
 		}
 	} else {
 		log.Debug("No hostname set for telemetry records")
@@ -192,12 +204,18 @@ func newT(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetad
 		instanceID = instanceIDEnv
 		log.Debugf("Fetch instance ID %v from environment variables", instanceIDEnv)
 	} else if metadataClient != nil {
-		instID, err := metadataClient.GetMetadata("instance-id")
+		output, err := metadataClient.GetMetadata(ctx, &imds.GetMetadataInput{
+			Path: "instance-id",
+		})
 		if err != nil {
 			log.Errorf("Get instance id metadata failed: %s", err)
 		} else {
-			instanceID = instID
-			log.Debugf("Using %v Instance Id for Telemetry records", instanceID)
+			// Read the content from the response
+			if output.Content != nil {
+				data, _ := io.ReadAll(output.Content)
+				instanceID = string(data)
+				log.Debugf("Using %s Instance Id for Telemetry records", instanceID)
+			}
 		}
 	} else {
 		log.Debug("No Instance Id set for telemetry records")
@@ -212,39 +230,39 @@ func newT(awsConfig *aws.Config, s *session.Session, resourceARN string, noMetad
 		timerChan:     getDataCutoffDelay(timer),
 		Done:          make(chan bool),
 		Quit:          make(chan bool),
-		recordChan:    make(chan *xray.TelemetryRecord, bufferSize),
+		recordChan:    make(chan types.TelemetryRecord, bufferSize),
 		postTelemetry: false,
 	}
-	telemetryClient := conn.NewXRay(awsConfig, s)
+	telemetryClient := conn.NewXRay(cfg)
 	t.client = telemetryClient
-	go t.pushData()
+	go t.pushData(ctx)
 	return t
 }
 
-func getZeroInt64() *int64 {
-	var zero int64
+func getZeroInt32() *int32 {
+	var zero int32
 	zero = 0
 	return &zero
 }
 
-func getEmptyTelemetryRecord() *xray.TelemetryRecord {
-	return &xray.TelemetryRecord{
-		SegmentsReceivedCount:  getZeroInt64(),
-		SegmentsRejectedCount:  getZeroInt64(),
-		SegmentsSentCount:      getZeroInt64(),
-		SegmentsSpilloverCount: getZeroInt64(),
-		BackendConnectionErrors: &xray.BackendConnectionErrors{
-			HTTPCode4XXCount:       getZeroInt64(),
-			HTTPCode5XXCount:       getZeroInt64(),
-			ConnectionRefusedCount: getZeroInt64(),
-			OtherCount:             getZeroInt64(),
-			TimeoutCount:           getZeroInt64(),
-			UnknownHostCount:       getZeroInt64(),
+func getEmptyTelemetryRecord() *types.TelemetryRecord {
+	return &types.TelemetryRecord{
+		SegmentsReceivedCount:  getZeroInt32(),
+		SegmentsRejectedCount:  getZeroInt32(),
+		SegmentsSentCount:      getZeroInt32(),
+		SegmentsSpilloverCount: getZeroInt32(),
+		BackendConnectionErrors: &types.BackendConnectionErrors{
+			HTTPCode4XXCount:       getZeroInt32(),
+			HTTPCode5XXCount:       getZeroInt32(),
+			ConnectionRefusedCount: getZeroInt32(),
+			OtherCount:             getZeroInt32(),
+			TimeoutCount:           getZeroInt32(),
+			UnknownHostCount:       getZeroInt32(),
 		},
 	}
 }
 
-func (t *Telemetry) pushData() {
+func (t *Telemetry) pushData(ctx context.Context) {
 	for {
 		quit := false
 		select {
@@ -259,13 +277,13 @@ func (t *Telemetry) pushData() {
 		// Rotation Logic:
 		// Swap current record to record to report.
 		// Record to report is set to empty record which is set to current record
-		t.currentRecord = (*xray.TelemetryRecord)(atomic.SwapPointer(&recordToReport,
+		t.currentRecord = (*types.TelemetryRecord)(atomic.SwapPointer(&recordToReport,
 			recordToPushPointer))
 		currentTime := time.Now()
-		record := (*xray.TelemetryRecord)(recordToReport)
+		record := (*types.TelemetryRecord)(recordToReport)
 		record.Timestamp = &currentTime
-		t.add(record)
-		t.sendAll()
+		t.add(*record)
+		t.sendAll(ctx)
 		if quit {
 			close(t.recordChan)
 			log.Debug("telemetry: done!")
@@ -277,7 +295,7 @@ func (t *Telemetry) pushData() {
 	}
 }
 
-func (t *Telemetry) add(record *xray.TelemetryRecord) {
+func (t *Telemetry) add(record types.TelemetryRecord) {
 	// Only send telemetry data when we receive first segment or else do not send any telemetry data.
 	if t.postTelemetry {
 		select {
@@ -296,9 +314,9 @@ func (t *Telemetry) add(record *xray.TelemetryRecord) {
 	}
 }
 
-func (t *Telemetry) sendAll() {
+func (t *Telemetry) sendAll(ctx context.Context) {
 	records := t.collectAllRecords()
-	recordsNoSend, err := t.sendRecords(records)
+	recordsNoSend, err := t.sendRecords(ctx, records)
 	if err != nil {
 		log.Debugf("Failed to send telemetry %v record(s). Re-queue records. %v", len(records), err)
 		// There might be possibility that new records might be archived during re-queue records.
@@ -309,10 +327,9 @@ func (t *Telemetry) sendAll() {
 	}
 }
 
-func (t *Telemetry) collectAllRecords() []*xray.TelemetryRecord {
-	records := make([]*xray.TelemetryRecord, bufferSize)
-	records = records[:0]
-	var record *xray.TelemetryRecord
+func (t *Telemetry) collectAllRecords() []types.TelemetryRecord {
+	records := make([]types.TelemetryRecord, 0, bufferSize)
+	var record types.TelemetryRecord
 	done := false
 	for !done {
 		select {
@@ -328,7 +345,7 @@ func (t *Telemetry) collectAllRecords() []*xray.TelemetryRecord {
 	return records
 }
 
-func (t *Telemetry) sendRecords(records []*xray.TelemetryRecord) ([]*xray.TelemetryRecord, error) {
+func (t *Telemetry) sendRecords(ctx context.Context, records []types.TelemetryRecord) ([]types.TelemetryRecord, error) {
 	if len(records) > 0 {
 		for i := 0; i < len(records); i = i + requestSize {
 			endIndex := len(records)
@@ -342,7 +359,7 @@ func (t *Telemetry) sendRecords(records []*xray.TelemetryRecord) ([]*xray.Teleme
 				ResourceARN:      &t.resourceARN,
 				TelemetryRecords: recordsToSend,
 			}
-			_, err := t.client.PutTelemetryRecords(&input)
+			_, err := t.client.PutTelemetryRecords(ctx, &input)
 			if err != nil {
 				EvaluateConnectionError(err)
 				return records[i:], err
