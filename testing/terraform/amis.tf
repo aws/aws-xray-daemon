@@ -17,9 +17,9 @@ variable "ami_family" {
 
 variable "amis" {
   default = {
-    ubuntu18 = {
+    ubuntu22 = {
       os_family          = "ubuntu"
-      ami_search_pattern = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server*"
+      ami_search_pattern = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server*"
       ami_owner          = "099720109477"
       ami_id             = "ami-02da34c96f69d525c"
       ami_product_code   = []
