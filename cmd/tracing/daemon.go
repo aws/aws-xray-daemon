@@ -10,7 +10,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,6 +34,8 @@ import (
 	"github.com/aws/aws-xray-daemon/pkg/telemetry"
 	"github.com/aws/aws-xray-daemon/pkg/tracesegment"
 	"github.com/aws/aws-xray-daemon/pkg/util"
+
+	"github.com/aws/aws-sdk-go/aws"
 	log "github.com/cihub/seelog"
 	"github.com/shirou/gopsutil/mem"
 )
@@ -191,23 +192,18 @@ func initDaemon(config *cfg.Config) *Daemon {
 	if config.Endpoint != "" {
 		log.Debugf("Using Endpoint read from Config file: %s", config.Endpoint)
 	}
-	ctx := context.Background()
-	awsConfig, err := conn.GetAWSConfig(ctx, &conn.Conn{}, config, roleArn, regionFlag, noMetadata)
-	if err != nil {
-		log.Errorf("Unable to get AWS config: %v", err)
-		os.Exit(1)
-	}
-	log.Infof("Using region: %s", awsConfig.Region)
+	awsConfig, session := conn.GetAWSConfigSession(&conn.Conn{}, config, roleArn, regionFlag, noMetadata)
+	log.Infof("Using region: %v", aws.StringValue(awsConfig.Region))
 
 	log.Debugf("ARN of the AWS resource running the daemon: %v", resourceARN)
-	telemetry.Init(ctx, awsConfig, resourceARN, noMetadata)
+	telemetry.Init(awsConfig, session, resourceARN, noMetadata)
 
 	// If calculated number of buffer is lower than our default, use calculated one. Otherwise, use default value.
 	parameterConfig.Processor.BatchSize = util.GetMinIntValue(parameterConfig.Processor.BatchSize, buffers)
 
 	config.Socket.TCPAddress = tcpAddress // assign final tcp address either through config file or cmd line
 	// Create proxy http server
-	server, err := proxy.NewServer(config, awsConfig)
+	server, err := proxy.NewServer(config, awsConfig, session)
 	if err != nil {
 		log.Errorf("Unable to start http proxy server: %v", err)
 		os.Exit(1)
@@ -220,7 +216,7 @@ func initDaemon(config *cfg.Config) *Daemon {
 		count:     0,
 		sock:      sock,
 		server:    server,
-		processor: processor.New(awsConfig, processorCount, std, bufferPool, parameterConfig),
+		processor: processor.New(awsConfig, session, processorCount, std, bufferPool, parameterConfig),
 	}
 
 	return daemon

@@ -1,4 +1,4 @@
-// Copyright 2018-2025 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// Copyright 2018-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the License. A copy of the License is located at
 //
@@ -10,17 +10,33 @@
 package conn
 
 import (
-	"context"
+	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-xray-daemon/pkg/util/test"
+
+	"github.com/stretchr/testify/mock"
+
+	"github.com/aws/aws-xray-daemon/pkg/cfg"
+
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/stretchr/testify/assert"
 )
 
+var ec2Region = "us-east-1"
 var tstFileName = "test_config.json"
 var tstFilePath string
+
+type mockConn struct {
+	mock.Mock
+	sn *session.Session
+}
 
 func setupTestFile(cnfg string) (string, error) {
 	goPath := os.Getenv("PWD")
@@ -39,6 +55,100 @@ func setupTestFile(cnfg string) (string, error) {
 
 func clearTestFile() {
 	os.Remove(tstFilePath)
+}
+
+func (c *mockConn) getEC2Region(s *session.Session) (string, error) {
+	args := c.Called(nil)
+	errorStr := args.String(0)
+	var err error
+	if errorStr != "" {
+		err = errors.New(errorStr)
+		return "", err
+	}
+	return ec2Region, nil
+}
+
+func (c *mockConn) newAWSSession(roleArn string, region string) *session.Session {
+	return c.sn
+}
+
+// fetch region value from ec2 meta data service
+func TestEC2Session(t *testing.T) {
+	m := new(mockConn)
+	log := test.LogSetup()
+	m.On("getEC2Region", nil).Return("").Once()
+	var expectedSession *session.Session
+	roleARN := ""
+	expectedSession, _ = session.NewSession()
+	m.sn = expectedSession
+	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", false)
+	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
+	assert.Equal(t, *cfg.Region, ec2Region, "Region value fetched from ec2-metadata service")
+	fmt.Printf("Logs: %v", log.Logs)
+	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from ec2 metadata", ec2Region)))
+}
+
+// fetch region value from environment variable
+func TestRegionEnv(t *testing.T) {
+	log := test.LogSetup()
+	region := "us-west-2"
+	env := stashEnv()
+	defer popEnv(env)
+	os.Setenv("AWS_REGION", region)
+
+	var m = &mockConn{}
+	var expectedSession *session.Session
+	roleARN := ""
+	expectedSession, _ = session.NewSession()
+	m.sn = expectedSession
+	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", true)
+	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
+	assert.Equal(t, *cfg.Region, region, "Region value fetched from environment")
+	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from environment variables", region)))
+}
+
+// Get region from the command line fo config file
+func TestRegionArgument(t *testing.T) {
+	log := test.LogSetup()
+	region := "ap-northeast-1"
+	var m = &mockConn{}
+	var expectedSession *session.Session
+	roleARN := ""
+	expectedSession, _ = session.NewSession()
+	m.sn = expectedSession
+	cfg, s := GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, region, true)
+	assert.Equal(t, s, expectedSession, "Expect the session object is not overridden")
+	assert.Equal(t, *cfg.Region, region, "Region value fetched from the environment")
+	assert.True(t, strings.Contains(log.Logs[1], fmt.Sprintf("Fetch region %v from commandline/config file", region)))
+}
+
+// exit function if no region value found
+func TestNoRegion(t *testing.T) {
+	region := ""
+	envFlag := "NO_REGION"
+	var m = &mockConn{}
+	var expectedSession *session.Session
+	roleARN := ""
+	expectedSession, _ = session.NewSession()
+	m.sn = expectedSession
+
+	if os.Getenv(envFlag) == "1" {
+		GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, region, true) // exits because no region found
+		return
+	}
+
+	// Start the actual test in a different subprocess
+	cmd := exec.Command(os.Args[0], "-test.run=TestNoRegion")
+	cmd.Env = append(os.Environ(), envFlag+"=1")
+	if cmdErr := cmd.Start(); cmdErr != nil {
+		t.Fatal(cmdErr)
+	}
+
+	// Check that the program exited
+	error := cmd.Wait()
+	if e, ok := error.(*exec.ExitError); !ok || e.Success() {
+		t.Fatalf("Process ran with err %v, want exit status 1", error)
+	}
 }
 
 // getRegionFromECSMetadata() returns a valid region from an appropriate JSON file
@@ -89,16 +199,15 @@ func TestValidECSRegion(t *testing.T) {
 }
 
 // getRegionFromECSMetadata() returns an empty string if ECS metadata related env is not set
-func TestNoECSMetadata(t *testing.T) {
+func TestNoECSMetadata(t *testing.T){
 	env := stashEnv()
 	defer popEnv(env)
 	testString := getRegionFromECSMetadata()
 
 	assert.EqualValues(t, "", testString)
 }
-
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be parsed as valid JSON
-func TestInvalidECSMetadata(t *testing.T) {
+func TestInvalidECSMetadata(t *testing.T){
 	metadataFile := "][foobar})("
 	setupTestFile(metadataFile)
 	env := stashEnv()
@@ -116,7 +225,7 @@ func TestInvalidECSMetadata(t *testing.T) {
 }
 
 // getRegionFromECSMetadata() throws an error and returns an empty string when ECS metadata file cannot be opened
-func TestMissingECSMetadataFile(t *testing.T) {
+func TestMissingECSMetadataFile(t *testing.T){
 	metadataFile := "foobar"
 	setupTestFile(metadataFile)
 	env := stashEnv()
@@ -131,6 +240,94 @@ func TestMissingECSMetadataFile(t *testing.T) {
 
 	assert.EqualValues(t, "", testString)
 	assert.True(t, strings.Contains(log.Logs[0], "Unable to open"))
+}
+
+// getEC2Region() returns nil region and error, resulting in exiting the process
+func TestErrEC2(t *testing.T) {
+	m := new(mockConn)
+	m.On("getEC2Region", nil).Return("Error").Once()
+	var expectedSession *session.Session
+	roleARN := ""
+	expectedSession, _ = session.NewSession()
+	m.sn = expectedSession
+	envFlag := "NO_REGION"
+	if os.Getenv(envFlag) == "1" {
+		GetAWSConfigSession(m, cfg.DefaultConfig(), roleARN, "", false)
+		return
+	}
+
+	// Start the actual test in a different subprocess
+	cmd := exec.Command(os.Args[0], "-test.run=TestErrEC2")
+	cmd.Env = append(os.Environ(), envFlag+"=1")
+	if cmdErr := cmd.Start(); cmdErr != nil {
+		t.Fatal(cmdErr)
+	}
+
+	// Check that the program exited
+	error := cmd.Wait()
+	if e, ok := error.(*exec.ExitError); !ok || e.Success() {
+		t.Fatalf("Process ran with err %v, want exit status 1", error)
+	}
+}
+
+func TestLoadEnvConfigCreds(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+
+	cases := struct {
+		Env map[string]string
+		Val credentials.Value
+	}{
+		Env: map[string]string{
+			"AWS_ACCESS_KEY":    "AKID",
+			"AWS_SECRET_KEY":    "SECRET",
+			"AWS_SESSION_TOKEN": "TOKEN",
+		},
+		Val: credentials.Value{
+			AccessKeyID: "AKID", SecretAccessKey: "SECRET", SessionToken: "TOKEN",
+			ProviderName: "EnvConfigCredentials",
+		},
+	}
+
+	for k, v := range cases.Env {
+		os.Setenv(k, v)
+	}
+	c := &Conn{}
+	cfg := c.newAWSSession("", "")
+	value, err := cfg.Config.Credentials.Get()
+
+	assert.Nil(t, err, "Expect no error")
+	assert.Equal(t, cases.Val, value, "Expect the credentials value to match")
+
+	cfgA := c.newAWSSession("ROLEARN", "TEST")
+	valueA, _ := cfgA.Config.Credentials.Get()
+
+	assert.Equal(t, "", valueA.AccessKeyID, "Expect the value to be empty")
+	assert.Equal(t, "", valueA.SecretAccessKey, "Expect the value to be empty")
+	assert.Equal(t, "", valueA.SessionToken, "Expect the value to be empty")
+	assert.Equal(t, "AssumeRoleProvider", valueA.ProviderName, "Expect the value to be AssumeRoleProvider")
+}
+
+func TestGetProxyUrlProxyAddressNotValid(t *testing.T) {
+	errorAddress := [3]string{"http://[%10::1]", "http://%41:8080/", "http://a b.com/"}
+	for _, address := range errorAddress {
+		// Only run the failing part when a specific env variable is set
+		if os.Getenv("Test_PROXY_URL") == "1" {
+			getProxyURL(address)
+			return
+		}
+		// Start the actual test in a different subprocess
+		cmd := exec.Command(os.Args[0], "-test.run=TestGetProxyUrlProxyAddressNotValid")
+		cmd.Env = append(os.Environ(), "Test_PROXY_URL=1")
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		// Check that the program exited
+		err := cmd.Wait()
+		if e, ok := err.(*exec.ExitError); !ok || e.Success() {
+			t.Fatalf("Process ran with err %v, want exit status 1", err)
+		}
+	}
 }
 
 func TestGetProxyAddressFromEnvVariable(t *testing.T) {
@@ -163,97 +360,52 @@ func TestGetProxyAddressPriority(t *testing.T) {
 	assert.Equal(t, "https://127.0.0.1:9999", getProxyAddress("https://127.0.0.1:9999"), "Expect function return value to be same with input")
 }
 
-// TestNewAWSConfigWithoutRole tests that newAWSConfig returns default config when no role is provided
-func TestNewAWSConfigWithoutRole(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set minimal credentials to prevent SDK from searching
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-	os.Setenv("AWS_REGION", "us-east-1")
-
-	c := &Conn{}
-	cfg, err := c.newAWSConfig(context.Background(), "", "us-east-1")
-
-	assert.NoError(t, err)
-	assert.Equal(t, "us-east-1", cfg.Region)
+func TestGetPartition1(t *testing.T) {
+	r := "us-east-1"
+	p := getPartition(r)
+	assert.Equal(t, endpoints.AwsPartitionID, p)
 }
 
-// TestNewAWSConfigWithRole tests that newAWSConfig configures STS assume role when role is provided
-func TestNewAWSConfigWithRole(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set minimal credentials to prevent SDK from searching
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-	os.Setenv("AWS_REGION", "us-west-2")
-
-	c := &Conn{}
-	roleArn := "arn:aws:iam::123456789012:role/test-role"
-	cfg, err := c.newAWSConfig(context.Background(), roleArn, "us-west-2")
-
-	assert.NoError(t, err)
-	assert.Equal(t, "us-west-2", cfg.Region)
-	// We can't easily test that the STS provider is configured correctly,
-	// but at least we verify no error and correct region
+func TestGetPartition2(t *testing.T) {
+	r := "cn-north-1"
+	p := getPartition(r)
+	assert.Equal(t, endpoints.AwsCnPartitionID, p)
 }
 
-// TestGetEC2Region tests the EC2 region retrieval
-// This test will fail when not running on EC2 (expected behavior)
-func TestGetEC2Region(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set credentials to prevent SDK from searching
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-	// Disable IMDS to force a timeout/error
-	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-
-	c := &Conn{}
-	cfg, _ := getDefaultConfig(context.Background())
-
-	// This should fail when IMDS is disabled or not on EC2
-	region, err := c.getEC2Region(context.Background(), cfg)
-	// Either we get an error (not on EC2) or empty region
-	if err == nil {
-		assert.Empty(t, region)
-	} else {
-		assert.Error(t, err)
-	}
+func TestGetPartition3(t *testing.T) {
+	r := "us-gov-east-1"
+	p := getPartition(r)
+	assert.Equal(t, endpoints.AwsUsGovPartitionID, p)
 }
 
-// TestGetDefaultConfig tests that getDefaultConfig returns a valid config
-func TestGetDefaultConfig(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set minimal credentials and region
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-	os.Setenv("AWS_REGION", "us-west-2")
-
-	cfg, err := getDefaultConfig(context.Background())
-
-	assert.NoError(t, err)
-	assert.NotNil(t, cfg)
-	// SDK v2 will pick up the region from env
-	assert.Equal(t, "us-west-2", cfg.Region)
+func TestGetPartition4(t *testing.T) { // if a region is not present in the array
+	r := "XYZ"
+	p := getPartition(r)
+	assert.Equal(t, "", p)
 }
 
-// TestGetProxyURL tests proxy URL parsing
-func TestGetProxyURL(t *testing.T) {
-	// Valid proxy URL
-	proxyURL := getProxyURL("https://127.0.0.1:8888")
-	assert.NotNil(t, proxyURL)
-	assert.Equal(t, "https", proxyURL.Scheme)
-	assert.Equal(t, "127.0.0.1:8888", proxyURL.Host)
+func TestGetSTSRegionalEndpoint1(t *testing.T) {
+	r := "us-east-1"
+	p := getSTSRegionalEndpoint(r)
+	assert.Equal(t, "https://sts.us-east-1.amazonaws.com", p)
+}
 
-	// Empty proxy URL
-	proxyURL = getProxyURL("")
-	assert.Nil(t, proxyURL)
+func TestGetSTSRegionalEndpoint2(t *testing.T) {
+	r := "cn-north-1"
+	p := getSTSRegionalEndpoint(r)
+	assert.Equal(t, "https://sts.cn-north-1.amazonaws.com.cn", p)
+}
+
+func TestGetSTSRegionalEndpoint3(t *testing.T) {
+	r := "us-gov-east-1"
+	p := getSTSRegionalEndpoint(r)
+	assert.Equal(t, "https://sts.us-gov-east-1.amazonaws.com", p)
+}
+
+func TestGetSTSRegionalEndpoint4(t *testing.T) { // if a region is not present in the array
+	r := "XYZ"
+	p := getPartition(r)
+	assert.Equal(t, "", p)
 }
 
 func stashEnv() []string {
