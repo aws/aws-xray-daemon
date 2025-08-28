@@ -10,19 +10,23 @@
 package processor
 
 import (
-	"math/rand"
-	"os"
 	"sync/atomic"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
+	log "github.com/cihub/seelog"
+
 	"github.com/aws/aws-xray-daemon/pkg/bufferpool"
-	"github.com/aws/aws-xray-daemon/pkg/cfg"
-	"github.com/aws/aws-xray-daemon/pkg/conn"
 	"github.com/aws/aws-xray-daemon/pkg/ringbuffer"
 	"github.com/aws/aws-xray-daemon/pkg/tracesegment"
+
+	"github.com/aws/aws-xray-daemon/pkg/cfg"
+	"github.com/aws/aws-xray-daemon/pkg/conn"
 	"github.com/aws/aws-xray-daemon/pkg/util/timer"
-	log "github.com/cihub/seelog"
+	"math/rand"
+	"os"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 // Processor buffers segments and send to X-Ray service.
@@ -59,9 +63,9 @@ type Processor struct {
 }
 
 // New creates new instance of Processor.
-func New(awsConfig aws.Config, segmentBatchProcessorCount int, std *ringbuffer.RingBuffer,
+func New(awsConfig *aws.Config, s *session.Session, segmentBatchProcessorCount int, std *ringbuffer.RingBuffer,
 	pool *bufferpool.BufferPool, c *cfg.ParameterConfig) *Processor {
-	batchesChan := make(chan []string, c.Processor.BatchProcessorQueueSize)
+	batchesChan := make(chan []*string, c.Processor.BatchProcessorQueueSize)
 	segmentBatchDoneChan := make(chan bool)
 	tsb := &segmentsBatch{
 		batches: batchesChan,
@@ -69,7 +73,7 @@ func New(awsConfig aws.Config, segmentBatchProcessorCount int, std *ringbuffer.R
 		randGen: rand.New(rand.NewSource(time.Now().UnixNano())),
 		timer:   &timer.Client{},
 	}
-	x := conn.NewXRay(awsConfig)
+	x := conn.NewXRay(awsConfig, s)
 	if x == nil {
 		log.Error("X-Ray client returned nil")
 		os.Exit(1)
@@ -164,11 +168,11 @@ func (p *Processor) flushBatch(batch []*tracesegment.TraceSegment) []*tracesegme
 func (p *Processor) sendBatchAsync(batch []*tracesegment.TraceSegment) []*tracesegment.TraceSegment {
 	log.Debugf("processor: segment batch size: %d. capacity: %d", len(batch), cap(batch))
 
-	segmentDocuments := []string{}
+	segmentDocuments := []*string{}
 	for _, segment := range batch {
 		rawBytes := *segment.Raw
 		x := string(rawBytes[:])
-		segmentDocuments = append(segmentDocuments, x)
+		segmentDocuments = append(segmentDocuments, &x)
 		p.pool.Return(segment.PoolBuf)
 	}
 	p.traceSegmentsBatch.send(segmentDocuments)
