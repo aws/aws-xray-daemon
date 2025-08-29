@@ -10,18 +10,20 @@
 package conn
 
 import (
+	"context"
+	"errors"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/xray"
-	"github.com/aws/aws-xray-daemon/pkg/cfg"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/xray"
+	"github.com/aws/smithy-go"
+	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+	daemoncfg "github.com/aws/aws-xray-daemon/pkg/cfg"
 	log "github.com/cihub/seelog"
 )
 
@@ -32,48 +34,66 @@ const osPrefix = " OS/"
 
 // XRay defines X-Ray api call structure.
 type XRay interface {
-	PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error)
-	PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error)
+	PutTraceSegments(ctx context.Context, input *xray.PutTraceSegmentsInput, opts ...func(*xray.Options)) (*xray.PutTraceSegmentsOutput, error)
+	PutTelemetryRecords(ctx context.Context, input *xray.PutTelemetryRecordsInput, opts ...func(*xray.Options)) (*xray.PutTelemetryRecordsOutput, error)
 }
 
 // XRayClient represents X-Ray client.
 type XRayClient struct {
-	xRay *xray.XRay
+	xRay *xray.Client
 }
 
 // PutTraceSegments makes PutTraceSegments api call on X-Ray client.
-func (c *XRayClient) PutTraceSegments(input *xray.PutTraceSegmentsInput) (*xray.PutTraceSegmentsOutput, error) {
-	return c.xRay.PutTraceSegments(input)
+func (c *XRayClient) PutTraceSegments(ctx context.Context, input *xray.PutTraceSegmentsInput, opts ...func(*xray.Options)) (*xray.PutTraceSegmentsOutput, error) {
+	return c.xRay.PutTraceSegments(ctx, input, opts...)
 }
 
 // PutTelemetryRecords makes PutTelemetryRecords api call on X-Ray client.
-func (c *XRayClient) PutTelemetryRecords(input *xray.PutTelemetryRecordsInput) (*xray.PutTelemetryRecordsOutput, error) {
-	return c.xRay.PutTelemetryRecords(input)
+func (c *XRayClient) PutTelemetryRecords(ctx context.Context, input *xray.PutTelemetryRecordsInput, opts ...func(*xray.Options)) (*xray.PutTelemetryRecordsOutput, error) {
+	return c.xRay.PutTelemetryRecords(ctx, input, opts...)
 }
 
-// NewXRay creates a new instance of the XRay client with a aws configuration and session .
-func NewXRay(awsConfig *aws.Config, s *session.Session) XRay {
-	x := xray.New(s, awsConfig)
-	log.Debugf("Using Endpoint: %s", x.Endpoint)
-
+// NewXRay creates a new instance of the XRay client with aws configuration.
+func NewXRay(cfg aws.Config) XRay {
 	execEnv := os.Getenv("AWS_EXECUTION_ENV")
 	if execEnv == "" {
 		execEnv = "UNKNOWN"
 	}
 
 	osInformation := runtime.GOOS + "-" + runtime.GOARCH
+	// User agent format: xray-daemon/3.x.x exec-env/ECS os/linux-amd64
+	userAgent := agentPrefix + daemoncfg.Version + execEnvPrefix + execEnv + osPrefix + osInformation
 
-	x.Handlers.Build.PushBackNamed(request.NamedHandler{
-		Name: "tracing.XRayVersionUserAgentHandler",
-		Fn:   request.MakeAddToUserAgentFreeFormHandler(agentPrefix + cfg.Version + execEnvPrefix + execEnv + osPrefix + osInformation),
+	// Create X-Ray client with custom options
+	x := xray.NewFromConfig(cfg, func(o *xray.Options) {
+		o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+			// Add user agent middleware
+			return stack.Build.Add(middleware.BuildMiddlewareFunc("XRayUserAgent", func(
+				ctx context.Context, in middleware.BuildInput, next middleware.BuildHandler,
+			) (middleware.BuildOutput, middleware.Metadata, error) {
+				req, ok := in.Request.(*smithyhttp.Request)
+				if ok {
+					req.Header.Add("User-Agent", userAgent)
+				}
+				return next.HandleBuild(ctx, in)
+			}), middleware.After)
+		})
+
+		o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+			// Add timestamp header middleware
+			return stack.Finalize.Add(middleware.FinalizeMiddlewareFunc("XRayTimestamp", func(
+				ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler,
+			) (middleware.FinalizeOutput, middleware.Metadata, error) {
+				req, ok := in.Request.(*smithyhttp.Request)
+				if ok {
+					req.Header.Set("X-Amzn-Xray-Timestamp", strconv.FormatFloat(float64(time.Now().UnixNano())/float64(time.Second), 'f', 9, 64))
+				}
+				return next.HandleFinalize(ctx, in)
+			}), middleware.Before)
+		})
 	})
 
-	x.Handlers.Sign.PushFrontNamed(request.NamedHandler{
-		Name: "tracing.TimestampHandler",
-		Fn: func(r *request.Request) {
-			r.HTTPRequest.Header.Set("X-Amzn-Xray-Timestamp", strconv.FormatFloat(float64(time.Now().UnixNano())/float64(time.Second), 'f', 9, 64))
-		},
-	})
+	log.Debugf("Using Endpoint: %s", cfg.BaseEndpoint)
 
 	return &XRayClient{
 		xRay: x,
@@ -82,11 +102,23 @@ func NewXRay(awsConfig *aws.Config, s *session.Session) XRay {
 
 // IsTimeoutError checks whether error is timeout error.
 func IsTimeoutError(err error) bool {
-	awsError, ok := err.(awserr.Error)
-	if ok {
-		if strings.Contains(awsError.Error(), "net/http: request canceled") {
-			return true
-		}
+	if err == nil {
+		return false
 	}
+	
+	// Check for timeout errors
+	// These string values are based on standard Go error messages and AWS SDK v2 timeout errors
+	if strings.Contains(err.Error(), "request canceled") ||
+		strings.Contains(err.Error(), "deadline exceeded") ||
+		strings.Contains(err.Error(), "timeout") {
+		return true
+	}
+	
+	// Check for smithy operation errors
+	var oe *smithy.OperationError
+	if errors.As(err, &oe) {
+		return IsTimeoutError(oe.Unwrap())
+	}
+	
 	return false
 }

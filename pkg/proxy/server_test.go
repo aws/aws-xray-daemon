@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -9,9 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-xray-daemon/pkg/cfg"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,23 +49,20 @@ func TestConsumeNilBody(t *testing.T) {
 
 // Assert that Director modifies the passed in http.Request
 func TestDirector(t *testing.T) {
-	// Create dummy credentials to sign with
-	cred := credentials.NewStaticCredentials("id", "secret", "token")
-
-	// Create dummy aws Config
-	awsCfg := &aws.Config{
-		Endpoint:    aws.String("https://xray.us-east-1.amazonaws.com"),
-		Region:      aws.String("us-east-1"),
-		Credentials: cred,
-	}
-
-	// Create dummy aws Session
-	sess := &session.Session{
-		Config: awsCfg,
+	// Create dummy aws Config for v2
+	awsCfg := aws.Config{
+		Region: "us-east-1",
+		Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+			return aws.Credentials{
+				AccessKeyID:     "id",
+				SecretAccessKey: "secret",
+				SessionToken:    "token",
+			}, nil
+		}),
 	}
 
 	// Create proxy server
-	s, err := NewServer(cfg.DefaultConfig(), awsCfg, sess)
+	s, err := NewServer(cfg.DefaultConfig(), awsCfg)
 	assert.Nil(t, err)
 
 	// Extract director from server
@@ -105,11 +101,15 @@ func TestDirector(t *testing.T) {
 // Fetching endpoint from aws config instance
 func TestEndpoint1(t *testing.T) {
 	e := "https://xray.us-east-1.amazonaws.com"
-	awsCfg := &aws.Config{
-		Endpoint: aws.String(e), // Endpoint value has higher priority than region value
-		Region:   aws.String("us-west-1"),
+	awsCfg := aws.Config{
+		EndpointResolverWithOptions: aws.EndpointResolverWithOptionsFunc(
+			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+				return aws.Endpoint{URL: e}, nil
+			}),
+		Region: "us-west-1",
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	// Endpoint value has higher priority than region value
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "Fetching endpoint from config instance")
 	assert.Nil(t, err)
 }
@@ -117,41 +117,40 @@ func TestEndpoint1(t *testing.T) {
 // Generating endpoint from region value of awsCfg instance
 func TestEndpoint2(t *testing.T) {
 	e := "https://xray.us-west-1.amazonaws.com"
-	awsCfg := &aws.Config{
-		Region: aws.String("us-west-1"), // No endpoint
+	awsCfg := aws.Config{
+		Region: "us-west-1", // No endpoint
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "Fetching endpoint from region")
 	assert.Nil(t, err)
 }
 
 // Error received when no endpoint and region value present in awsCfg instance
 func TestEndpoint3(t *testing.T) {
-	awsCfg := &aws.Config{
+	awsCfg := aws.Config{
 	// No endpoint and region value
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, "", result, "Endpoint cannot be created")
 	assert.NotNil(t, err)
 }
 
 func TestEndpoint4(t *testing.T) {
-	awsCfg := &aws.Config{
+	awsCfg := aws.Config{
 		// region value set to ""
-		Region: aws.String(""),
+		Region: "",
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, "", result, "Endpoint cannot be created")
 	assert.NotNil(t, err)
 }
 
 func TestEndpoint5(t *testing.T) {
 	e := "https://xray.us-west-1.amazonaws.com"
-	awsCfg := &aws.Config{
-		Endpoint: aws.String(""),          // Endpoint set to ""
-		Region:   aws.String("us-west-1"), // No endpoint
+	awsCfg := aws.Config{
+		Region: "us-west-1", // No endpoint override
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "Endpoint created from region value")
 	assert.Nil(t, err)
 }
@@ -159,11 +158,10 @@ func TestEndpoint5(t *testing.T) {
 // Testing AWS China partition
 func TestEndpoint6(t *testing.T) {
 	e := "https://xray.cn-northwest-1.amazonaws.com.cn"
-	awsCfg := &aws.Config{
-		Endpoint: aws.String(""),
-		Region:   aws.String("cn-northwest-1"),
+	awsCfg := aws.Config{
+		Region: "cn-northwest-1",
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "creating endpoint from region")
 	assert.Nil(t, err)
 }
@@ -171,11 +169,10 @@ func TestEndpoint6(t *testing.T) {
 // Testing AWS China partition
 func TestEndpoint7(t *testing.T) {
 	e := "https://xray.cn-north-1.amazonaws.com.cn"
-	awsCfg := &aws.Config{
-		Endpoint: aws.String(""),
-		Region:   aws.String("cn-north-1"),
+	awsCfg := aws.Config{
+		Region: "cn-north-1",
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "creating endpoint from region")
 	assert.Nil(t, err)
 }
@@ -183,11 +180,10 @@ func TestEndpoint7(t *testing.T) {
 // Testing AWS Gov partition
 func TestEndpoint8(t *testing.T) {
 	e := "https://xray.us-gov-east-1.amazonaws.com"
-	awsCfg := &aws.Config{
-		Endpoint: aws.String(""),
-		Region:   aws.String("us-gov-east-1"),
+	awsCfg := aws.Config{
+		Region: "us-gov-east-1",
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "creating endpoint from region")
 	assert.Nil(t, err)
 }
@@ -195,11 +191,32 @@ func TestEndpoint8(t *testing.T) {
 // Testing AWS Gov partition
 func TestEndpoint9(t *testing.T) {
 	e := "https://xray.us-gov-west-1.amazonaws.com"
-	awsCfg := &aws.Config{
-		Endpoint: aws.String(""),
-		Region:   aws.String("us-gov-west-1"),
+	awsCfg := aws.Config{
+		Region: "us-gov-west-1",
 	}
-	result, err := getServiceEndpoint(awsCfg)
+	result, err := getServiceEndpoint(&awsCfg)
 	assert.Equal(t, e, result, "creating endpoint from region")
+	assert.Nil(t, err)
+}
+
+// Testing ISO region (us-iso)
+func TestEndpoint10(t *testing.T) {
+	e := "https://xray.us-iso-east-1.c2s.ic.gov"
+	awsCfg := aws.Config{
+		Region: "us-iso-east-1",
+	}
+	result, err := getServiceEndpoint(&awsCfg)
+	assert.Equal(t, e, result, "creating endpoint for ISO region")
+	assert.Nil(t, err)
+}
+
+// Testing ISO-B region (us-isob)
+func TestEndpoint11(t *testing.T) {
+	e := "https://xray.us-isob-east-1.sc2s.sgov.gov"
+	awsCfg := aws.Config{
+		Region: "us-isob-east-1",
+	}
+	result, err := getServiceEndpoint(&awsCfg)
+	assert.Equal(t, e, result, "creating endpoint for ISO-B region")
 	assert.Nil(t, err)
 }

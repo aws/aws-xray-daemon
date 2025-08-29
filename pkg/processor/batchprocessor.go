@@ -10,14 +10,15 @@
 package processor
 
 import (
-	"github.com/aws/aws-xray-daemon/pkg/conn"
-	"github.com/aws/aws-xray-daemon/pkg/telemetry"
-	"github.com/aws/aws-xray-daemon/pkg/util/timer"
+	"context"
 	"math/rand"
 	"regexp"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/xray"
+	"github.com/aws/aws-sdk-go-v2/service/xray"
+	"github.com/aws/aws-xray-daemon/pkg/conn"
+	"github.com/aws/aws-xray-daemon/pkg/telemetry"
+	"github.com/aws/aws-xray-daemon/pkg/util/timer"
 	log "github.com/cihub/seelog"
 )
 
@@ -30,7 +31,7 @@ type segmentsBatch struct {
 	done chan bool
 
 	// String slice of trace segments.
-	batches chan []*string
+	batches chan []string
 
 	// Instance of XRay, used to send data to X-Ray service.
 	xRay conn.XRay
@@ -42,7 +43,7 @@ type segmentsBatch struct {
 	timer timer.Timer
 }
 
-func (s *segmentsBatch) send(batch []*string) {
+func (s *segmentsBatch) send(batch []string) {
 	select {
 	case s.batches <- batch:
 
@@ -61,6 +62,7 @@ func (s *segmentsBatch) send(batch []*string) {
 }
 
 func (s *segmentsBatch) poll() {
+	ctx := context.Background()
 	for {
 		batch, ok := <-s.batches
 		if ok {
@@ -69,7 +71,7 @@ func (s *segmentsBatch) poll() {
 			}
 			start := time.Now()
 			// send segment to X-Ray service.
-			r, err := s.xRay.PutTraceSegments(params)
+			r, err := s.xRay.PutTraceSegments(ctx, params)
 			if err != nil {
 				telemetry.EvaluateConnectionError(err)
 				log.Errorf("Sending segment batch failed with: %v", err)
@@ -84,12 +86,12 @@ func (s *segmentsBatch) poll() {
 					len(r.UnprocessedTraceSegments), elapsed.Seconds())
 				batchesMap := make(map[string]string)
 				for i := 0; i < len(batch); i++ {
-					segIdStrs := segIdRegexp.FindStringSubmatch(*batch[i])
+					segIdStrs := segIdRegexp.FindStringSubmatch(batch[i])
 					if len(segIdStrs) != 2 {
-						log.Debugf("Failed to match \"id\" in segment: %v", *batch[i])
+						log.Debugf("Failed to match \"id\" in segment: %v", batch[i])
 						continue
 					}
-					batchesMap[segIdStrs[1]] = *batch[i]
+					batchesMap[segIdStrs[1]] = batch[i]
 				}
 				for _, unprocessedSegment := range r.UnprocessedTraceSegments {
 					telemetry.T.SegmentRejected(1)

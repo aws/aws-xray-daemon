@@ -61,7 +61,7 @@ func TestSendBatchSuccess(t *testing.T) {
 			pool:        bufferpool.Init(testCase+1, 100),
 			timerClient: &timer,
 			traceSegmentsBatch: &segmentsBatch{
-				batches: make(chan []*string, 1),
+				batches: make(chan []string, 1),
 			},
 		}
 		// Empty Pool
@@ -102,7 +102,7 @@ func TestPollingFewSegmentsExit(t *testing.T) {
 		Done:        doneChan,
 		pool:        pool,
 		traceSegmentsBatch: &segmentsBatch{
-			batches: make(chan []*string, 1),
+			batches: make(chan []string, 1),
 		},
 		sendIdleTimeout: time.Second,
 		batchSize:       50,
@@ -137,7 +137,7 @@ func TestPollingFewSegmentsIdleTimeout(t *testing.T) {
 		Done:        doneChan,
 		pool:        pool,
 		traceSegmentsBatch: &segmentsBatch{
-			batches: make(chan []*string, 1),
+			batches: make(chan []string, 1),
 		},
 		sendIdleTimeout: time.Second,
 		batchSize:       50,
@@ -183,7 +183,7 @@ func TestPollingBatchBufferFull(t *testing.T) {
 		batchProcessorCount: segmentProcessorCount,
 		pool:                pool,
 		traceSegmentsBatch: &segmentsBatch{
-			batches: make(chan []*string, 1),
+			batches: make(chan []string, 1),
 			done:    make(chan bool),
 		},
 		batchSize: batchSize,
@@ -228,7 +228,7 @@ func TestPollingBufferPoolExhaustedForcingSent(t *testing.T) {
 		batchProcessorCount: segmentProcessorCount,
 		pool:                pool,
 		traceSegmentsBatch: &segmentsBatch{
-			batches: make(chan []*string, 1),
+			batches: make(chan []string, 1),
 			done:    make(chan bool),
 		},
 		sendIdleTimeout: time.Second,
@@ -261,7 +261,7 @@ func TestPollingIdleTimerIsInitiatedAfterElapseWithNoSegments(t *testing.T) {
 		std:         stdChan,
 		pool:        pool,
 		traceSegmentsBatch: &segmentsBatch{
-			batches: make(chan []*string, 1),
+			batches: make(chan []string, 1),
 		},
 		sendIdleTimeout: time.Second,
 		batchSize:       batchSize,
