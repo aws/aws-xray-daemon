@@ -17,7 +17,6 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	daemoncfg "github.com/aws/aws-xray-daemon/pkg/cfg"
@@ -253,52 +252,6 @@ func TestGetEC2Region(t *testing.T) {
 	} else {
 		assert.Error(t, err)
 	}
-}
-
-// TestGetEC2RegionTimeout tests that getEC2Region times out quickly in non-EC2 environments
-func TestGetEC2RegionTimeout(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set credentials to prevent SDK from searching
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-	// Disable IMDS to simulate non-EC2 environment
-	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-
-	c := &Conn{}
-	cfg, _ := getDefaultConfig(context.Background())
-
-	// Measure the time it takes to fail
-	start := time.Now()
-	_, err := c.getEC2Region(context.Background(), cfg)
-	duration := time.Since(start)
-
-	// Should fail with an error
-	assert.Error(t, err)
-	// Should timeout within 3 seconds (2 second timeout + some buffer)
-	assert.Less(t, duration.Seconds(), float64(3), "getEC2Region should timeout quickly")
-}
-
-// TestGetEC2RegionContextCancellation tests that getEC2Region respects context cancellation
-func TestGetEC2RegionContextCancellation(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set credentials to prevent SDK from searching
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-
-	c := &Conn{}
-	cfg, _ := getDefaultConfig(context.Background())
-
-	// Create a context that's already cancelled
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	// Should fail immediately due to cancelled context
-	_, err := c.getEC2Region(ctx, cfg)
-	assert.Error(t, err)
 }
 
 // TestGetDefaultConfig tests that getDefaultConfig returns a valid config

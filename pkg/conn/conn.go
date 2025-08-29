@@ -40,16 +40,8 @@ type Conn struct{}
 
 func (c *Conn) getEC2Region(ctx context.Context, cfg aws.Config) (string, error) {
 	client := imds.NewFromConfig(cfg)
-
-	// First check if IMDS is available by trying to get the region
-	// Use a short timeout to fail fast in non-EC2 environments
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	regionResp, err := client.GetRegion(ctxWithTimeout, &imds.GetRegionInput{})
+	regionResp, err := client.GetRegion(ctx, &imds.GetRegionInput{})
 	if err != nil {
-		// Don't treat IMDS unavailability as a fatal error
-		// This is expected in on-prem or non-EC2 environments
 		return "", err
 	}
 	return regionResp.Region, nil
@@ -170,7 +162,7 @@ func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn
 			if err == nil {
 				awsRegion, err = cn.getEC2Region(ctx, tempCfg)
 				if err != nil {
-					log.Debugf("Unable to fetch region from EC2 metadata (this is expected in non-EC2 environments): %v", err)
+					log.Errorf("Unable to fetch region from EC2 metadata: %v\n", err)
 				} else {
 					log.Debugf("Fetch region %s from ec2 metadata", awsRegion)
 				}
@@ -188,7 +180,7 @@ func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn
 		}
 	}
 	if awsRegion == "" {
-		log.Errorf("Cannot determine AWS region. For on-premise environments, please set AWS_REGION environment variable or use --region flag. Alternatively, use --local-mode for local testing.")
+		log.Errorf("Cannot fetch region variable from config file, environment variables, ecs metadata, or ec2 metadata. Use local-mode to use the local config region.")
 		os.Exit(1)
 	}
 	cfg, err = cn.newAWSConfig(ctx, roleArn, awsRegion)
