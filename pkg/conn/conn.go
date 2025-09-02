@@ -167,7 +167,7 @@ func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn
 					log.Debugf("Fetch region %s from ec2 metadata", awsRegion)
 				}
 			} else {
-				log.Debugf("Unable to get default config: %v", err)
+				log.Errorf("Unable to get default config: %v", err)
 			}
 		}
 	} else {
