@@ -285,8 +285,8 @@ func TestGetProxyURL(t *testing.T) {
 	assert.Nil(t, proxyURL)
 }
 
-// TestEC2Session tests fetching region value from ec2 metadata service
-func TestEC2Session(t *testing.T) {
+// TestGetAWSConfigEC2Region tests fetching region value from ec2 metadata service
+func TestGetAWSConfigEC2Region(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
 
