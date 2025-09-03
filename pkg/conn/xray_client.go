@@ -98,7 +98,11 @@ func NewXRay(cfg aws.Config) XRay {
 		})
 	})
 
-	log.Debugf("Using Endpoint: %s", cfg.BaseEndpoint)
+	if cfg.BaseEndpoint != nil {
+		log.Debugf("Using Endpoint: %s", *cfg.BaseEndpoint)
+	} else {
+		log.Debug("Using default X-Ray endpoint")
+	}
 
 	return &XRayClient{
 		xRay: x,
