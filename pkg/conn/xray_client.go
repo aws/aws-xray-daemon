@@ -68,14 +68,19 @@ func NewXRay(cfg aws.Config) XRay {
 	x := xray.NewFromConfig(cfg, func(o *xray.Options) {
 		o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
 			// Add user agent middleware
-			return stack.Build.Add(middleware.BuildMiddlewareFunc("XRayUserAgent", func(
-				ctx context.Context, in middleware.BuildInput, next middleware.BuildHandler,
-			) (middleware.BuildOutput, middleware.Metadata, error) {
+			return stack.Serialize.Add(middleware.SerializeMiddlewareFunc("XRayUserAgent", func(
+				ctx context.Context, in middleware.SerializeInput, next middleware.SerializeHandler,
+			) (middleware.SerializeOutput, middleware.Metadata, error) {
 				req, ok := in.Request.(*smithyhttp.Request)
 				if ok {
-					req.Header.Add("User-Agent", userAgent)
+					existingUA := req.Header.Get("User-Agent")
+					if existingUA != "" {
+						req.Header.Set("User-Agent", existingUA+" "+userAgent)
+					} else {
+						req.Header.Set("User-Agent", userAgent)
+					}
 				}
-				return next.HandleBuild(ctx, in)
+				return next.HandleSerialize(ctx, in)
 			}), middleware.After)
 		})
 
