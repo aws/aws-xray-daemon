@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.6.0 (2025-09-03)
+- Migrate AWS SDK for Go from v1 to v2 [PR #247](https://github.com/aws/aws-xray-daemon/pull/247)
+
 ## 3.5.0 (2025-08-28)
 - Revert migrate AWS SDK for Go from v1 to v2 [PR #245](https://github.com/aws/aws-xray-daemon/pull/245)
 
