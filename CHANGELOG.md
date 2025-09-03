@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.6.0 (2025-09-03)
+- Add daemon verification steps to continuous-build workflow [PR #248](https://github.com/aws/aws-xray-daemon/pull/248)
+- Aws SDK Go v1 -> v2 migration [PR #247](https://github.com/aws/aws-xray-daemon/pull/247)
+- Fix UserAgent by modifying the current value rather than adding a separate attribute [PR #253](https://github.com/aws/aws-xray-daemon/pull/253)
+
 ## 3.5.0 (2025-08-28)
 - Revert migrate AWS SDK for Go from v1 to v2 [PR #245](https://github.com/aws/aws-xray-daemon/pull/245)
 
