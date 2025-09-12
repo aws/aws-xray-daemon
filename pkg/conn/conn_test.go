@@ -242,7 +242,7 @@ func TestGetEC2Region(t *testing.T) {
 	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
 
 	c := &Conn{}
-	cfg, _ := getDefaultConfig(context.Background())
+	cfg, _ := GetDefaultConfig(context.Background())
 
 	// This should fail when IMDS is disabled or not on EC2
 	region, err := c.getEC2Region(context.Background(), cfg)
@@ -254,7 +254,7 @@ func TestGetEC2Region(t *testing.T) {
 	}
 }
 
-// TestGetDefaultConfig tests that getDefaultConfig returns a valid config
+// TestGetDefaultConfig tests that GetDefaultConfig returns a valid config
 func TestGetDefaultConfig(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
@@ -264,7 +264,7 @@ func TestGetDefaultConfig(t *testing.T) {
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
 	os.Setenv("AWS_REGION", "us-west-2")
 
-	cfg, err := getDefaultConfig(context.Background())
+	cfg, err := GetDefaultConfig(context.Background())
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
