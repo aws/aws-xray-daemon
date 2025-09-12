@@ -174,7 +174,12 @@ func newT(ctx context.Context, cfg aws.Config, resourceARN string, noMetadata bo
 
 	var metadataClient *imds.Client
 	if !noMetadata {
-		metadataClient = imds.NewFromConfig(cfg)
+		tempCfg, err := conn.GetDefaultConfig(ctx)
+		if err != nil {
+			log.Debugf("Init metadata client failed: %s", err)
+		} else {
+			metadataClient = imds.NewFromConfig(tempCfg)
+		}
 	}
 
 	hostnameEnv := os.Getenv("AWS_HOSTNAME")
