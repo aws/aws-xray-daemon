@@ -158,7 +158,7 @@ func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn
 	} else if !noMetadata {
 		awsRegion = getRegionFromECSMetadata()
 		if awsRegion == "" {
-			tempCfg, err := getDefaultConfig(ctx)
+			tempCfg, err := GetDefaultConfig(ctx)
 			if err == nil {
 				awsRegion, err = cn.getEC2Region(ctx, tempCfg)
 				if err != nil {
@@ -171,7 +171,7 @@ func GetAWSConfig(ctx context.Context, cn connAttr, c *daemoncfg.Config, roleArn
 			}
 		}
 	} else {
-		tempCfg, err := getDefaultConfig(ctx)
+		tempCfg, err := GetDefaultConfig(ctx)
 		if err == nil {
 			awsRegion = tempCfg.Region
 			log.Debugf("Fetched region %s from config", awsRegion)
@@ -234,11 +234,11 @@ func ProxyServerTransport(config *daemoncfg.Config) *http.Transport {
 
 func (c *Conn) newAWSConfig(ctx context.Context, roleArn string, region string) (aws.Config, error) {
 	if roleArn == "" {
-		return getDefaultConfig(ctx)
+		return GetDefaultConfig(ctx)
 	}
 
 	// Load config with STS credentials
-	cfg, err := getDefaultConfig(ctx)
+	cfg, err := GetDefaultConfig(ctx)
 	if err != nil {
 		return aws.Config{}, err
 	}
@@ -255,7 +255,7 @@ func (c *Conn) newAWSConfig(ctx context.Context, roleArn string, region string) 
 	return cfg, nil
 }
 
-func getDefaultConfig(ctx context.Context) (aws.Config, error) {
+func GetDefaultConfig(ctx context.Context) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return aws.Config{}, err
