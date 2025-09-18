@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.6.1 (2025-09-19)
+- Fix IMDS queries under proxies [PR #256](https://github.com/aws/aws-xray-daemon/pull/256)
+
 ## 3.6.0 (2025-09-03)
 - Migrate AWS SDK for Go from v1 to v2 [PR #247](https://github.com/aws/aws-xray-daemon/pull/247)
 
