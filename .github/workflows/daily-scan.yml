@@ -1,0 +1,265 @@
+name: "Daily Security Scan"
+
+on:
+  schedule:
+    # Run twice daily at 6 AM and 6 PM UTC
+    - cron: '0 6,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan-go-modules:
+    name: Scan Go Module Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+    - name: Set up Go
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      with:
+        go-version: '1.24.9'
+
+    - name: Run comprehensive Go vulnerability scanning
+      continue-on-error: true
+      env:
+        GOFLAGS: -mod=mod
+      run: |
+        # Ensure go.sum is up to date
+        go mod tidy
+        
+        # Install security tools
+        go install golang.org/x/vuln/cmd/govulncheck@d1f380186385b4f64e00313f31743df8e4b89a77 # v1.1.4
+        go install github.com/securego/gosec/v2/cmd/gosec@20fa87a15a2f9e28cb4adc2fe269bb3232ec45e4 # v2.22.9
+           
+        # Run govulncheck
+        govulncheck -json ./... > govulncheck-results.json || echo "govulncheck completed"
+        
+        # Run gosec
+        gosec -fmt json -out gosec-daily-results.json ./... || echo "gosec completed"
+
+        # Generate module information
+        go mod download -json > go-mod-download.json
+        go list -m -json all > go-mod-list.json
+
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+      continue-on-error: true
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-daily-results.sarif'
+        scanners: 'vuln,secret,config'
+        severity: 'HIGH,CRITICAL'
+
+    - name: Upload Trivy daily results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@e2b3eafc8d227b0241d48be5f425d47c2d750a13 # v3.26.10
+      if: always() && hashFiles('trivy-daily-results.sarif') != ''
+      with:
+        sarif_file: trivy-daily-results.sarif
+        category: 'daily-scan-trivy'
+
+    - name: Upload daily scan reports
+      uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+      if: always()
+      with:
+        name: daily-scan-reports
+        path: |
+          govulncheck-results.json
+          gosec-daily-results.json
+          trivy-daily-results.sarif
+          go-mod-download.json
+          go-mod-list.json
+          go.list
+
+    - name: Generate daily scan summary
+      if: always()
+      run: |
+        echo "## Daily Go Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "Scan completed at $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "Repository: aws-xray-daemon" >> $GITHUB_STEP_SUMMARY
+        
+        # govulncheck summary - count lines with "finding" field
+        GOVULN_COUNT="0"
+        if [ -f "govulncheck-results.json" ] && [ -s "govulncheck-results.json" ]; then
+          GOVULN_COUNT=$(grep -c '"finding"' govulncheck-results.json 2>/dev/null || echo "0")
+        fi
+        echo "govulncheck vulnerabilities: $GOVULN_COUNT" >> $GITHUB_STEP_SUMMARY
+        
+        # gosec summary
+        GOSEC_COUNT="0"
+        if [ -f "gosec-daily-results.json" ] && [ -s "gosec-daily-results.json" ]; then
+          GOSEC_COUNT=$(jq -r 'if .Issues then (.Issues | length) else 0 end' gosec-daily-results.json 2>/dev/null || echo "0")
+        fi
+        echo "gosec security issues: $GOSEC_COUNT" >> $GITHUB_STEP_SUMMARY
+        
+        # Trivy summary
+        TRIVY_COUNT="0"
+        if [ -f "trivy-daily-results.sarif" ] && [ -s "trivy-daily-results.sarif" ]; then
+          TRIVY_COUNT=$(jq -r 'if .runs and (.runs | length > 0) then .runs[0].results | length else 0 end' trivy-daily-results.sarif 2>/dev/null || echo "0")
+        fi
+        echo "Trivy vulnerabilities: $TRIVY_COUNT" >> $GITHUB_STEP_SUMMARY
+
+        # Module count - count lines instead of using jq
+        MODULE_COUNT="0"
+        if [ -f "go-mod-list.json" ] && [ -s "go-mod-list.json" ]; then
+          MODULE_COUNT=$(grep -c '^{' go-mod-list.json 2>/dev/null || echo "0")
+        fi
+        echo "Go modules scanned: $MODULE_COUNT" >> $GITHUB_STEP_SUMMARY
+        
+        # Overall status
+        TOTAL_ISSUES=$((${GOVULN_COUNT:-0} + ${GOSEC_COUNT:-0} + ${TRIVY_COUNT:-0}))
+        if [ "$TOTAL_ISSUES" -gt "0" ]; then
+          echo "⚠️ **Action Required**: $TOTAL_ISSUES security issues detected" >> $GITHUB_STEP_SUMMARY
+          echo "Check the Security tab for detailed findings" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ No security issues found in daily scan" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  scan-published-images:
+    name: Scan Published Docker Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: public.ecr.aws/xray/aws-xray-daemon:latest
+            name: ecr
+          - image: amazon/aws-xray-daemon:latest
+            name: dockerhub
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+    - name: Run Trivy vulnerability scanner on published image
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+      continue-on-error: true
+      timeout-minutes: 15
+      with:
+        image-ref: ${{ matrix.image }}
+        format: 'sarif'
+        output: 'trivy-${{ matrix.name }}-results.sarif'
+        # Scan for all vulnerability types including OS packages
+        vuln-type: 'os,library'
+        # Include medium, high and critical severities
+        severity: 'MEDIUM,HIGH,CRITICAL'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@e2b3eafc8d227b0241d48be5f425d47c2d750a13 # v3.26.10
+      if: always() && hashFiles('trivy-${{ matrix.name }}-results.sarif') != ''
+      with:
+        sarif_file: 'trivy-${{ matrix.name }}-results.sarif'
+        category: 'daily-scan-${{ matrix.name }}'
+
+    - name: Generate image scan summary
+      if: always()
+      run: |
+        echo "## Daily Docker Image Security Scan Results for ${{ matrix.image }}" >> $GITHUB_STEP_SUMMARY
+        echo "Scan completed at $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "Image: ${{ matrix.image }}" >> $GITHUB_STEP_SUMMARY
+        echo "Registry: ${{ matrix.name }}" >> $GITHUB_STEP_SUMMARY
+        
+        # Check if vulnerabilities were found
+        if [ -f "trivy-${{ matrix.name }}-results.sarif" ]; then
+          VULN_COUNT=$(jq '.runs[0].results | length' trivy-${{ matrix.name }}-results.sarif 2>/dev/null || echo "0")
+          echo "Vulnerabilities found: $VULN_COUNT" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$VULN_COUNT" -gt "0" ]; then
+            echo "⚠️ **Action Required**: Vulnerabilities detected in published image" >> $GITHUB_STEP_SUMMARY
+            echo "Check the Security tab for detailed findings" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No medium/high/critical vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "❌ Scan failed or image not accessible" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Upload image scan artifacts
+      uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+      if: always()
+      with:
+        name: image-scan-${{ matrix.name }}
+        path: trivy-${{ matrix.name }}-results.sarif
+
+  scan-build-artifacts:
+    name: Scan Build Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+    - name: Set up Go
+      uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+      with:
+        go-version: '1.24.9'
+
+    - name: Build daemon binary for scanning
+      run: |
+        # Build the daemon binary for Linux
+        make create-folder
+        make build-linux-amd64
+        
+        # Create a temporary directory structure for scanning
+        mkdir -p scan-artifacts/bin
+        cp build/xray-linux-amd64/xray scan-artifacts/bin/
+        
+        # Copy configuration files
+        cp -r cfg scan-artifacts/ || echo "No cfg directory found"
+        
+        # Copy any other relevant files
+        find . -name "*.yml" -o -name "*.yaml" -o -name "*.json" -o -name "*.toml" | head -20 | xargs -I {} cp {} scan-artifacts/ || echo "Config files copied"
+
+    - name: Run Trivy on build artifacts
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+      continue-on-error: true
+      with:
+        scan-type: 'fs'
+        scan-ref: 'scan-artifacts'
+        format: 'sarif'
+        output: 'trivy-artifacts-results.sarif'
+        scanners: 'vuln,secret,config'
+        severity: 'HIGH,CRITICAL'
+
+    - name: Upload build artifacts scan results
+      uses: github/codeql-action/upload-sarif@e2b3eafc8d227b0241d48be5f425d47c2d750a13 # v3.26.10
+      if: always() && hashFiles('trivy-artifacts-results.sarif') != ''
+      with:
+        sarif_file: trivy-artifacts-results.sarif
+        category: 'daily-scan-artifacts'
+
+    - name: Generate build artifacts summary
+      if: always()
+      run: |
+        echo "## Build Artifacts Security Scan" >> $GITHUB_STEP_SUMMARY
+        echo "Scan completed at $(date)" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "trivy-artifacts-results.sarif" ]; then
+          ARTIFACT_ISSUES=$(jq '.runs[0].results | length' trivy-artifacts-results.sarif 2>/dev/null || echo "0")
+          echo "Build artifact issues: $ARTIFACT_ISSUES" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$ARTIFACT_ISSUES" -gt "0" ]; then
+            echo "⚠️ **Action Required**: Issues found in build artifacts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No issues found in build artifacts" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+
+    - name: Upload build artifacts scan reports
+      uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
+      if: always()
+      with:
+        name: build-artifacts-scan
+        path: |
+          trivy-artifacts-results.sarif
+          scan-artifacts/
