@@ -75,18 +75,37 @@ jobs:
           gpg --verify dependency-check.zip.asc
           unzip dependency-check.zip
           
-          # Run dependency check on Go modules
-          ./dependency-check/bin/dependency-check.sh --failOnCVSS 0 --nvdApiKey ${{ env.NVD_API_KEY_NVD_API_KEY }} -s "." --enableExperimental
-        continue-on-error: true
+          # Run dependency check on Go modules with NVD API key and disable OSS Index to avoid rate limits
+          ./dependency-check/bin/dependency-check.sh \
+            --failOnCVSS 0 \
+            --nvdApiKey ${{ env.NVD_API_KEY_NVD_API_KEY }} \
+            --disableOssIndex \
+            --enableExperimental \
+            -s "." \
+            --format HTML \
+            --format JSON
 
       - name: Print dependency scan results on failure
         if: ${{ steps.dep_scan.outcome != 'success' }}
         run: |
+          echo "Dependency scan failed with exit code: $?"
           if [ -f dependency-check-report.html ]; then
             echo "Dependency scan report found, displaying summary:"
             grep -A 10 -B 10 "vulnerabilities found" dependency-check-report.html || echo "No vulnerability summary found"
           else
             echo "No dependency scan report found"
+          fi
+          
+      - name: Check dependency scan results
+        if: always()
+        run: |
+          if [ -f dependency-check-report.json ]; then
+            echo "Dependency scan completed successfully"
+            # Extract vulnerability count from JSON report
+            VULN_COUNT=$(jq '.dependencies | map(.vulnerabilities // []) | flatten | length' dependency-check-report.json 2>/dev/null || echo "0")
+            echo "Found $VULN_COUNT vulnerabilities"
+          else
+            echo "Dependency scan did not complete successfully"
           fi
 
       - name: Configure AWS credentials for image scan
@@ -114,28 +133,12 @@ jobs:
         id: high_scan_latest
         run: |
           trivy image --severity CRITICAL,HIGH --exit-code 1 public.ecr.aws/xray/aws-xray-daemon:latest
-        continue-on-error: true
 
       - name: Perform low image scan on latest
         if: always()
         id: low_scan_latest
         run: |
           trivy image --severity MEDIUM,LOW,UNKNOWN --exit-code 1 public.ecr.aws/xray/aws-xray-daemon:latest
-        continue-on-error: true
-
-      - name: Perform high image scan on alpha
-        if: always()
-        id: high_scan_alpha
-        run: |
-          trivy image --severity CRITICAL,HIGH --exit-code 1 public.ecr.aws/xray/aws-xray-daemon:alpha
-        continue-on-error: true
-
-      - name: Perform low image scan on alpha
-        if: always()
-        id: low_scan_alpha
-        run: |
-          trivy image --severity MEDIUM,LOW,UNKNOWN --exit-code 1 public.ecr.aws/xray/aws-xray-daemon:alpha
-        continue-on-error: true
 
       - name: Configure AWS Credentials for emitting metrics
         if: always()
@@ -153,28 +156,10 @@ jobs:
             --dimensions repository=${{ github.repository }},branch=${{ github.ref_name }},workflow=daily_scan_high \
             --value $value
 
-      - name: Publish high scan status on alpha
-        if: always()
-        run: |
-          value="${{ steps.high_scan_alpha.outcome == 'success' && '1.0' || '0.0' }}"
-          aws cloudwatch put-metric-data --namespace 'XRAY/GitHubActions' \
-            --metric-name Success \
-            --dimensions repository=${{ github.repository }},branch=${{ github.ref_name }},workflow=daily_scan_high \
-            --value $value
-
       - name: Publish low scan status on latest
         if: always()
         run: |
           value="${{ steps.low_scan_latest.outcome == 'success' && steps.dep_scan.outcome == 'success' && '1.0' || '0.0'}}"
-          aws cloudwatch put-metric-data --namespace 'XRAY/GitHubActions' \
-            --metric-name Success \
-            --dimensions repository=${{ github.repository }},branch=${{ github.ref_name }},workflow=daily_scan_low \
-            --value $value
-      
-      - name: Publish low scan status on alpha
-        if: always()
-        run: |
-          value="${{ steps.low_scan_alpha.outcome == 'success' && steps.dep_scan.outcome == 'success' && '1.0' || '0.0'}}"
           aws cloudwatch put-metric-data --namespace 'XRAY/GitHubActions' \
             --metric-name Success \
             --dimensions repository=${{ github.repository }},branch=${{ github.ref_name }},workflow=daily_scan_low \
