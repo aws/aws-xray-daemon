@@ -126,26 +126,20 @@ jobs:
         if: always()
         uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 #5.0.0
         with:
-          role-to-assume: ${{ secrets.METRICS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_INTEG_TEST_ROLE_ARN }}
           aws-region:  ${{ env.AWS_DEFAULT_REGION }}
 
       - name: Publish high scan status on latest
         if: always()
         run: |
-          value="${{ steps.high_scan_latest.outcome == 'success' && '1.0' || '0.0' }}"
-          aws cloudwatch put-metric-data --namespace 'XRAY/GitHubActions' \
-            --metric-name Success \
-            --dimensions repository=${{ github.repository }},branch=${{ github.ref_name }},workflow=daily_scan_high \
-            --value $value
+          value="${{ steps.high_scan_latest.outcome == 'success' && '0' || '1' }}"
+          aws cloudwatch put-metric-data --metric-name SecurityScanHighSeverityFailures --dimensions failure=rate --namespace MonitorDaemon --value $value --timestamp $(date +%s)
 
       - name: Publish low scan status on latest
         if: always()
         run: |
-          value="${{ steps.low_scan_latest.outcome == 'success' && steps.dep_scan.outcome == 'success' && '1.0' || '0.0'}}"
-          aws cloudwatch put-metric-data --namespace 'XRAY/GitHubActions' \
-            --metric-name Success \
-            --dimensions repository=${{ github.repository }},branch=${{ github.ref_name }},workflow=daily_scan_low \
-            --value $value
+          value="${{ steps.low_scan_latest.outcome == 'success' && steps.dep_scan.outcome == 'success' && '0' || '1' }}"
+          aws cloudwatch put-metric-data --metric-name SecurityScanLowSeverityFailures --dimensions failure=rate --namespace MonitorDaemon --value $value --timestamp $(date +%s)
 
       - name: Cleanup
         if: always()
