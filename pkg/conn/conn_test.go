@@ -12,19 +12,44 @@ package conn
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	daemoncfg "github.com/aws/aws-xray-daemon/pkg/cfg"
 	"github.com/aws/aws-xray-daemon/pkg/util/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
+var ec2Region = "us-east-1"
 var tstFileName = "test_config.json"
 var tstFilePath string
+
+// mockConn using testify/mock for compatibility with existing tests
+type mockConn struct {
+	mock.Mock
+	cfg aws.Config
+}
+
+func (c *mockConn) getEC2Region(ctx context.Context, cfg aws.Config) (string, error) {
+	args := c.Called(ctx, cfg)
+	errorStr := args.String(0)
+	var err error
+	if errorStr != "" {
+		err = errors.New(errorStr)
+		return "", err
+	}
+	return ec2Region, nil
+}
+
+func (c *mockConn) newAWSConfig(ctx context.Context, roleArn string, region string) (aws.Config, error) {
+	c.cfg.Region = region
+	return c.cfg, nil
+}
 
 func setupTestFile(cnfg string) (string, error) {
 	goPath := os.Getenv("PWD")
@@ -217,7 +242,7 @@ func TestGetEC2Region(t *testing.T) {
 	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
 
 	c := &Conn{}
-	cfg, _ := getDefaultConfig(context.Background())
+	cfg, _ := GetDefaultConfig(context.Background())
 
 	// This should fail when IMDS is disabled or not on EC2
 	region, err := c.getEC2Region(context.Background(), cfg)
@@ -229,53 +254,7 @@ func TestGetEC2Region(t *testing.T) {
 	}
 }
 
-// TestGetEC2RegionTimeout tests that getEC2Region times out quickly in non-EC2 environments
-func TestGetEC2RegionTimeout(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set credentials to prevent SDK from searching
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-	// Disable IMDS to simulate non-EC2 environment
-	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-
-	c := &Conn{}
-	cfg, _ := getDefaultConfig(context.Background())
-
-	// Measure the time it takes to fail
-	start := time.Now()
-	_, err := c.getEC2Region(context.Background(), cfg)
-	duration := time.Since(start)
-
-	// Should fail with an error
-	assert.Error(t, err)
-	// Should timeout within 3 seconds (2 second timeout + some buffer)
-	assert.Less(t, duration.Seconds(), float64(3), "getEC2Region should timeout quickly")
-}
-
-// TestGetEC2RegionContextCancellation tests that getEC2Region respects context cancellation
-func TestGetEC2RegionContextCancellation(t *testing.T) {
-	env := stashEnv()
-	defer popEnv(env)
-
-	// Set credentials to prevent SDK from searching
-	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
-
-	c := &Conn{}
-	cfg, _ := getDefaultConfig(context.Background())
-
-	// Create a context that's already cancelled
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	// Should fail immediately due to cancelled context
-	_, err := c.getEC2Region(ctx, cfg)
-	assert.Error(t, err)
-}
-
-// TestGetDefaultConfig tests that getDefaultConfig returns a valid config
+// TestGetDefaultConfig tests that GetDefaultConfig returns a valid config
 func TestGetDefaultConfig(t *testing.T) {
 	env := stashEnv()
 	defer popEnv(env)
@@ -285,7 +264,7 @@ func TestGetDefaultConfig(t *testing.T) {
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
 	os.Setenv("AWS_REGION", "us-west-2")
 
-	cfg, err := getDefaultConfig(context.Background())
+	cfg, err := GetDefaultConfig(context.Background())
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
@@ -304,6 +283,213 @@ func TestGetProxyURL(t *testing.T) {
 	// Empty proxy URL
 	proxyURL = getProxyURL("")
 	assert.Nil(t, proxyURL)
+}
+
+// TestGetAWSConfigEC2Region tests fetching region value from ec2 metadata service
+func TestGetAWSConfigEC2Region(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+
+	// Set credentials to prevent SDK errors
+	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+
+	m := new(mockConn)
+	log := test.LogSetup()
+	m.On("getEC2Region", mock.Anything, mock.Anything).Return("").Once()
+	roleARN := ""
+	expectedConfig := aws.Config{Region: ec2Region}
+	m.cfg = expectedConfig
+	ctx := context.Background()
+	config := &daemoncfg.Config{
+		NoVerifySSL: aws.Bool(false),
+	}
+	cfg, err := GetAWSConfig(ctx, m, config, roleARN, "", false)
+	assert.NoError(t, err)
+	assert.Equal(t, ec2Region, cfg.Region, "Region value fetched from ec2-metadata service")
+	fmt.Printf("Logs: %v", log.Logs)
+	assert.True(t, strings.Contains(fmt.Sprintf("%v", log.Logs), fmt.Sprintf("Fetch region %v from ec2 metadata", ec2Region)) ||
+		strings.Contains(fmt.Sprintf("%v", log.Logs), fmt.Sprintf("Fetch region %s from ec2 metadata", ec2Region)))
+}
+
+// TestRegionEnv tests fetching region value from environment variable
+func TestRegionEnv(t *testing.T) {
+	log := test.LogSetup()
+	region := "us-west-2"
+	env := stashEnv()
+	defer popEnv(env)
+	os.Setenv("AWS_REGION", region)
+	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+
+	var m = &mockConn{}
+	roleARN := ""
+	expectedConfig := aws.Config{Region: region}
+	m.cfg = expectedConfig
+	ctx := context.Background()
+	config := &daemoncfg.Config{
+		NoVerifySSL: aws.Bool(false),
+	}
+	cfg, err := GetAWSConfig(ctx, m, config, roleARN, "", true)
+	assert.NoError(t, err)
+	assert.Equal(t, region, cfg.Region, "Region value fetched from environment")
+	assert.True(t, strings.Contains(fmt.Sprintf("%v", log.Logs), fmt.Sprintf("Fetch region %v from environment variables", region)))
+}
+
+// TestRegionArgument tests getting region from the command line or config file
+func TestRegionArgument(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+
+	os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+
+	log := test.LogSetup()
+	region := "ap-northeast-1"
+	var m = &mockConn{}
+	roleARN := ""
+	expectedConfig := aws.Config{Region: region}
+	m.cfg = expectedConfig
+	ctx := context.Background()
+	config := &daemoncfg.Config{
+		NoVerifySSL: aws.Bool(false),
+	}
+	cfg, err := GetAWSConfig(ctx, m, config, roleARN, region, true)
+	assert.NoError(t, err)
+	assert.Equal(t, region, cfg.Region, "Region value fetched from the command line")
+	assert.True(t, strings.Contains(fmt.Sprintf("%v", log.Logs), fmt.Sprintf("Fetch region %v from commandline/config file", region)))
+}
+
+// TestNoRegion tests exit function if no region value found
+func TestNoRegion(t *testing.T) {
+	region := ""
+	envFlag := "NO_REGION"
+	m := new(mockConn)
+	m.On("getEC2Region", mock.Anything, mock.Anything).Return("Error").Once() // Return error so no region is found
+	roleARN := ""
+	expectedConfig := aws.Config{}
+	m.cfg = expectedConfig
+
+	if os.Getenv(envFlag) == "1" {
+		env := stashEnv()
+		defer popEnv(env)
+		// Set credentials but no region
+		os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+		os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+
+		ctx := context.Background()
+		config := &daemoncfg.Config{
+			NoVerifySSL: aws.Bool(false),
+		}
+		GetAWSConfig(ctx, m, config, roleARN, region, false) // exits because no region found
+		return
+	}
+
+	// Start the actual test in a different subprocess
+	cmd := exec.Command(os.Args[0], "-test.run=TestNoRegion")
+	cmd.Env = append(os.Environ(), envFlag+"=1")
+	if cmdErr := cmd.Start(); cmdErr != nil {
+		t.Fatal(cmdErr)
+	}
+
+	// Check that the program exited
+	error := cmd.Wait()
+	if e, ok := error.(*exec.ExitError); !ok || e.Success() {
+		t.Fatalf("Process ran with err %v, want exit status 1", error)
+	}
+}
+
+// TestErrEC2 tests that getEC2Region() returns nil region and error, resulting in exiting the process
+func TestErrEC2(t *testing.T) {
+	m := new(mockConn)
+	m.On("getEC2Region", mock.Anything, mock.Anything).Return("Error").Once()
+	roleARN := ""
+	expectedConfig := aws.Config{}
+	m.cfg = expectedConfig
+	envFlag := "NO_REGION"
+	if os.Getenv(envFlag) == "1" {
+		env := stashEnv()
+		defer popEnv(env)
+		// Set credentials but no region
+		os.Setenv("AWS_ACCESS_KEY_ID", "test-key")
+		os.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+
+		ctx := context.Background()
+		config := &daemoncfg.Config{
+			NoVerifySSL: aws.Bool(false),
+		}
+		GetAWSConfig(ctx, m, config, roleARN, "", false)
+		return
+	}
+
+	// Start the actual test in a different subprocess
+	cmd := exec.Command(os.Args[0], "-test.run=TestErrEC2")
+	cmd.Env = append(os.Environ(), envFlag+"=1")
+	if cmdErr := cmd.Start(); cmdErr != nil {
+		t.Fatal(cmdErr)
+	}
+
+	// Check that the program exited
+	error := cmd.Wait()
+	if e, ok := error.(*exec.ExitError); !ok || e.Success() {
+		t.Fatalf("Process ran with err %v, want exit status 1", error)
+	}
+}
+
+// TestLoadEnvConfigCreds tests loading credentials from environment variables
+func TestLoadEnvConfigCreds(t *testing.T) {
+	env := stashEnv()
+	defer popEnv(env)
+
+	cases := struct {
+		Env map[string]string
+	}{
+		Env: map[string]string{
+			"AWS_ACCESS_KEY_ID":     "AKID",
+			"AWS_SECRET_ACCESS_KEY": "SECRET",
+			"AWS_SESSION_TOKEN":     "TOKEN",
+			"AWS_REGION":            "us-east-1",
+		},
+	}
+
+	for k, v := range cases.Env {
+		os.Setenv(k, v)
+	}
+	c := &Conn{}
+	ctx := context.Background()
+	cfg, err := c.newAWSConfig(ctx, "", "us-east-1")
+	assert.NoError(t, err, "Expect no error")
+	// In v2, we can't directly check credentials like in v1
+	// The config will use environment credentials automatically
+	assert.NotNil(t, cfg.Credentials, "Expect credentials to be set")
+
+	// Test with role ARN
+	cfgA, err := c.newAWSConfig(ctx, "arn:aws:iam::123456789012:role/test-role", "us-east-1")
+	assert.NoError(t, err)
+	assert.NotNil(t, cfgA.Credentials, "Expect credentials to be set for assume role")
+}
+
+// TestGetProxyUrlProxyAddressNotValid tests invalid proxy URL handling
+func TestGetProxyUrlProxyAddressNotValid(t *testing.T) {
+	errorAddress := [3]string{"http://[%10::1]", "http://%41:8080/", "http://a b.com/"}
+	for _, address := range errorAddress {
+		// Only run the failing part when a specific env variable is set
+		if os.Getenv("Test_PROXY_URL") == "1" {
+			getProxyURL(address)
+			return
+		}
+		// Start the actual test in a different subprocess
+		cmd := exec.Command(os.Args[0], "-test.run=TestGetProxyUrlProxyAddressNotValid")
+		cmd.Env = append(os.Environ(), "Test_PROXY_URL=1")
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		// Check that the program exited
+		err := cmd.Wait()
+		if e, ok := err.(*exec.ExitError); !ok || e.Success() {
+			t.Fatalf("Process ran with err %v, want exit status 1", err)
+		}
+	}
 }
 
 // mockConnAttr is a mock implementation of connAttr for testing

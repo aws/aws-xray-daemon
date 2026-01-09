@@ -1,4 +1,4 @@
-testing_ami = "ubuntu18"
+testing_ami = "ubuntu22"
 daemon_file_name = "aws-xray-daemon-3.x.deb"
 daemon_install_command = "sudo dpkg -i aws-xray-daemon-3.x.deb"
 daemon_start_command = "sudo /usr/bin/xray -a start"

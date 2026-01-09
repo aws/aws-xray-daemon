@@ -15,10 +15,6 @@ We recommend that you migrate to [AWS Distro for OpenTelemetry (ADOT) or OpenTel
 
 To gather traces from OpenTelemetry instrumentation and relay them to AWS X-Ray, you can use OpenTelemetry-compatible solutions such as the CloudWatch Agent, or the OpenTelemetry Collector. Read more about migrating to OpenTelemetry-compatible solutions to replace the X-Ray Daemon in the [migration guide][xray-otel-migration-docs].
 
-## :mega: End-of-Support on February 25, 2027
-
-[The AWS X-Ray Daemon will reach end-of-support on **`February 25, 2027`**][xray-sdk-daemon-timeline]. After end-of-support, the X-Ray Daemon will no longer receive updates or releases. Previously published releases will continue to be available via S3, Public ECR, and Docker Hub, and the source code will remain on GitHub.
-
 [xray-otel-migration-docs]: https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-migration.html
 [xray-sdk-daemon-timeline]: https://docs.aws.amazon.com/xray/latest/devguide/xray-daemon-eos.html
 

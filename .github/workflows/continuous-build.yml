@@ -32,7 +32,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.24.2'
+          go-version: '^1.24.9'
 
       - uses: actions/cache@v4
         with:
@@ -153,6 +153,46 @@ jobs:
             amazon/aws-xray-daemon:alpha
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+
+      # Verify the daemon is able to run with the new changes
+      - name: Run Daemon Image (Amazon Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          # Build a single-platform image locally for testing
+          docker build -f ./Dockerfile.amazonlinux -t amazon/aws-xray-daemon:linux .
+          docker run --name xray-daemon amazon/aws-xray-daemon:linux -o -n us-west-2 &
+          sleep 30
+
+      - name: Verify daemon is running in Docker (Amazon Linux)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          if [[ "$(docker container inspect -f '{{.State.Status}}' xray-daemon )" != "running" ]]; then
+            echo "XRay Daemon (Amazon Linux) failed to start in Docker"
+            exit 1
+          else
+            echo "XRay Daemon (Amazon Linux) is running successfully in Docker"
+          fi
+
+      - name: Run Daemon Image (Scratch)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          # Stop and remove previous container
+          docker stop xray-daemon || true
+          docker rm xray-daemon || true
+          # Build a single-platform image locally for testing
+          docker build -f ./Dockerfile -t amazon/aws-xray-daemon:scratch .
+          docker run --name xray-daemon amazon/aws-xray-daemon:scratch -o -n us-west-2 &
+          sleep 30
+
+      - name: Verify daemon is running in Docker (Scratch)
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          if [[ "$(docker container inspect -f '{{.State.Status}}' xray-daemon )" != "running" ]]; then
+            echo "XRay Daemon (Scratch) failed to start in Docker"
+            exit 1
+          else
+            echo "XRay Daemon (Scratch) is running successfully in Docker"
+          fi
   
   test:
     name: Integration testing
