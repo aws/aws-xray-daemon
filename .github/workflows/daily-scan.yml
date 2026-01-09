@@ -86,14 +86,10 @@ jobs:
             --format JSON
 
       - name: Print dependency scan results on failure
-        if: ${{ steps.dep_scan.outcome != 'success' }}
+        if: always()
         run: |
-          echo "Dependency scan failed with exit code: $?"
-          if [ -f dependency-check-report.html ]; then
-            echo "Dependency scan report found, displaying summary:"
-            grep -A 10 -B 10 "vulnerabilities found" dependency-check-report.html || echo "No vulnerability summary found"
-          else
-            echo "No dependency scan report found"
+          if [ "${{ steps.dep_scan.outcome }}" != "success" ]; then
+            less dependency-check-report.html
           fi
           
       - name: Check dependency scan results
@@ -109,36 +105,39 @@ jobs:
           fi
 
       - name: Configure AWS credentials for image scan
+        if: always()
         uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 #5.0.0
         with:
           role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN_RELEASE }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
       - name: Login to Public ECR
+        if: always()
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 #v3.5.0
         with:
           registry: public.ecr.aws
 
-      - name: Install Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install wget apt-transport-https gnupg lsb-release
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install trivy
-
       - name: Perform high image scan on latest
         if: always()
         id: high_scan_latest
-        run: |
-          trivy image --severity CRITICAL,HIGH --exit-code 1 public.ecr.aws/xray/aws-xray-daemon:latest
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'public.ecr.aws/xray/aws-xray-daemon:latest'
+          format: 'sarif'
+          output: 'trivy-results-high.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
       - name: Perform low image scan on latest
         if: always()
         id: low_scan_latest
-        run: |
-          trivy image --severity MEDIUM,LOW,UNKNOWN --exit-code 1 public.ecr.aws/xray/aws-xray-daemon:latest
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'public.ecr.aws/xray/aws-xray-daemon:latest'
+          format: 'sarif'
+          output: 'trivy-results-low.sarif'
+          severity: 'MEDIUM,LOW,UNKNOWN'
+          exit-code: '1'
 
       - name: Configure AWS Credentials for emitting metrics
         if: always()
