@@ -91,18 +91,6 @@ jobs:
           if [ "${{ steps.dep_scan.outcome }}" != "success" ]; then
             less dependency-check-report.html
           fi
-          
-      - name: Check dependency scan results
-        if: always()
-        run: |
-          if [ -f dependency-check-report.json ]; then
-            echo "Dependency scan completed successfully"
-            # Extract vulnerability count from JSON report
-            VULN_COUNT=$(jq '.dependencies | map(.vulnerabilities // []) | flatten | length' dependency-check-report.json 2>/dev/null || echo "0")
-            echo "Found $VULN_COUNT vulnerabilities"
-          else
-            echo "Dependency scan did not complete successfully"
-          fi
 
       - name: Perform high image scan on latest
         if: always()
