@@ -1,5 +1,5 @@
 # build stage
-FROM --platform=$BUILDPLATFORM golang:1.24.9-alpine AS build-env
+FROM --platform=$BUILDPLATFORM golang:1.24.13-alpine AS build-env
 ARG TARGETPLATFORM
 
 RUN apk update && apk add ca-certificates
