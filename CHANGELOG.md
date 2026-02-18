@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.6.2 (2026-02-13)
+- Bump Go from 1.24.9 to 1.24.13 [PR #266](https://github.com/aws/aws-xray-daemon/pull/266)
+- Bump up Go from 1.24.1 to 1.24.9 [PR #260](https://github.com/aws/aws-xray-daemon/pull/260)
+
 ## 3.6.1 (2025-09-19)
 - Fix IMDS queries under proxies [PR #256](https://github.com/aws/aws-xray-daemon/pull/256)
 
