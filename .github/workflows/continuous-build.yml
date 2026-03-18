@@ -27,14 +27,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 #v2.7.0
 
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 #v2.2.0
         with:
           go-version: '^1.24.13'
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #v4.3.0
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -54,7 +54,7 @@ jobs:
 
       - name: Configure AWS Credentials
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 #v1.7.0
         with:
           role-to-assume: ${{ secrets.AWS_ASSUME_ROLE_ARN_RELEASE }}
           aws-region: us-east-1
@@ -100,7 +100,7 @@ jobs:
       
       - name: Upload archives as actions artifact
         if: ${{ runner.os == 'Linux' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
         with:
           name: distributions
           path: build/dist/
@@ -111,17 +111,17 @@ jobs:
 
       - name: Login to DockerHub
         if: ${{ runner.os == 'Linux' && github.event_name == 'push' }}
-        uses: docker/login-action@v1
+        uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 #v1.14.1
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
 
       - name: Set up Docker Buildx
         if: ${{ runner.os == 'Linux' }}
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@f211e3e9ded2d9377c8cadc4489a4e38014bc4c9 #v1.7.0
 
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #v4.3.0
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
@@ -130,7 +130,7 @@ jobs:
 
       - name: Build docker image for public ECR
         if: ${{ runner.os == 'Linux' }}
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a #v2.10.0
         with:
           context: .
           file: ./Dockerfile
@@ -143,7 +143,7 @@ jobs:
 
       - name: Build docker image for DockerHub
         if: ${{ runner.os == 'Linux' }}
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@ac9327eae2b366085ac7f6a2d02df8aa8ead720a #v2.10.0
         with:
           context: .
           file: ./Dockerfile.amazonlinux
@@ -211,10 +211,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 #v2.7.0
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 #v4.3.0
         with:
           name: distributions
           path: distributions
@@ -223,7 +223,7 @@ jobs:
         run: ls -R
 
       - name: Set up terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1 #v2.0.3
 
       # workaround for handling input value for auto-triggered workflows
       # https://dev.to/mrmike/github-action-handling-input-default-value-5f2g
@@ -246,21 +246,21 @@ jobs:
 
       - name: Configure AWS Credentials
         if: ${{ steps.setRegion.outputs.partition == 'aws' }}
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 #v1.7.0
         with:
           role-to-assume: ${{ secrets.TESTING_ROLE_ARN }}
           aws-region: ${{ steps.setRegion.outputs.region }}
 
       - name: Configure AWS Credentials - China
         if: ${{ steps.setRegion.outputs.partition == 'aws-cn' }}
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 #v1.7.0
         with:
           role-to-assume: ${{ secrets.TESTING_ROLE_ARN_CN }}
           aws-region: cn-north-1
 
       - name: Configure AWS Credentials - US Gov
         if: ${{ steps.setRegion.outputs.partition == 'aws-us-gov' }}
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838 #v1.7.0
         with:
           role-to-assume: ${{ secrets.TESTING_ROLE_ARN_US_GOV }}
           aws-region: us-gov-west-1
@@ -299,3 +299,28 @@ jobs:
         run: |
           cd testing/terraform
           terraform destroy -auto-approve -var=aws_region=${{ steps.setRegion.outputs.region }}
+
+  static-code-checks:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #5.0.0
+        with:
+          fetch-depth: 0
+      - name: Check for versioned GitHub actions
+        if: always()
+        run: |
+          # Get changed GitHub workflow/action files
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "^\.github/(workflows|actions)/.*\.ya?ml$" || true)
+          
+          if [ -n "$CHANGED_FILES" ]; then
+            # Check for any versioned actions, excluding comments and this validation script
+            VIOLATIONS=$(grep -Hn "uses:.*@v" $CHANGED_FILES | grep -v "grep.*uses:.*@v" | grep -v "#.*@v" || true)
+            if [ -n "$VIOLATIONS" ]; then
+              echo "Found versioned GitHub actions. Use commit SHAs instead:"
+              echo "$VIOLATIONS"
+              exit 1
+            fi
+          fi
+          
+          echo "No versioned actions found in changed files"
