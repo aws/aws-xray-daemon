@@ -50,10 +50,15 @@ jobs:
 
       - name: Install published module for scanning
         run: |
-          mkdir -p scan-target && cd scan-target
-          go mod init scan
-          printf 'package main\nimport _ "github.com/aws/aws-xray-daemon/pkg/cfg"\nfunc main() {}\n' > main.go
-          go mod tidy
+          mkdir -p scan-target
+          # Resolve the latest release tag and copy its go.mod/go.sum into
+          # scan-target/ so DependencyCheck scans the published dependency tree.
+          # We cannot use "go get" because the module path lacks a /v3 suffix
+          # (this is a standalone binary, not an importable library).
+          latest_tag=$(git tag -l 'v*' | sort -rV | head -1)
+          echo "Latest release tag: $latest_tag"
+          git show "${latest_tag}:go.mod" > scan-target/go.mod
+          git show "${latest_tag}:go.sum" > scan-target/go.sum
 
       # See http://jeremylong.github.io/DependencyCheck/dependency-check-cli/ for installation explanation
       - name: Install and run dependency scan
