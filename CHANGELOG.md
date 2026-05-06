@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.6.3 (2026-05-06)
+- Bump Go from 1.24.13 to 1.25.9 [PR #282](https://github.com/aws/aws-xray-daemon/pull/282)
+
 ## 3.6.2 (2026-02-13)
 - Bump Go from 1.24.9 to 1.24.13 [PR #266](https://github.com/aws/aws-xray-daemon/pull/266)
 - Bump up Go from 1.24.1 to 1.24.9 [PR #260](https://github.com/aws/aws-xray-daemon/pull/260)
