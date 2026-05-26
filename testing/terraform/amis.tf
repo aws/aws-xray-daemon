@@ -2,13 +2,13 @@ variable "ami_family" {
   default = {
     debian = {
       login_user      = "ubuntu"
-      instance_type   = "t2.micro"
+      instance_type   = "t3.micro"
       connection_type = "ssh"
       wait_cloud_init = "for i in {1..300}; do [ ! -f /var/lib/cloud/instance/boot-finished ] && echo 'Waiting for cloud-init...'$i && sleep 1 || break; done"
     }
     linux = {
       login_user      = "ec2-user"
-      instance_type   = "t2.micro"
+      instance_type   = "t3.micro"
       connection_type = "ssh"
       wait_cloud_init = "for i in {1..300}; do [ ! -f /var/lib/cloud/instance/boot-finished ] && echo 'Waiting for cloud-init...'$i && sleep 1 || break; done"
     }
