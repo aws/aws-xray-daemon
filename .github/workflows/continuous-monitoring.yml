@@ -105,9 +105,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_INTEG_TEST_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: Install rpm tooling
-        run: sudo apt-get update && sudo apt-get install -y rpm
-
       - name: Download and verify S3 assets
         if: ${{ always() }}
         run: |
@@ -133,7 +130,6 @@ jobs:
           KEY_OK=0
           if download "$BASE/aws-xray.gpg" aws-xray.gpg; then
             gpg --import aws-xray.gpg || KEY_OK=1
-            sudo rpm --import aws-xray.gpg || true
           else
             KEY_OK=1
           fi
@@ -163,6 +159,11 @@ jobs:
           done
 
           # ---- RPM artifacts: download + rpm signature check -------------------
+          # rpm verification runs inside an Amazon Linux container, not on the
+          # ubuntu-latest host: modern Ubuntu's rpm uses the Sequoia backend,
+          # which rejects the daemon's (older RSA) signing key and would make
+          # every check falsely report SIGNATURES NOT OK. Amazon Linux is also
+          # the platform these RPMs actually target.
           RPM_ARTIFACTS=(
             "aws-xray-daemon-3.x.rpm"
             "aws-xray-daemon-arm64-3.x.rpm"
@@ -170,8 +171,8 @@ jobs:
           for name in "${RPM_ARTIFACTS[@]}"; do
             dl=0; sig=0
             if download "$BASE/$name" "$name"; then
-              # Key imported above; rpm -K exits non-zero on a bad/missing signature.
-              if [[ "$KEY_OK" -eq 0 ]] && sudo rpm -K "$name" | grep -qi "pgp.*ok\|signatures ok"; then
+              if [[ "$KEY_OK" -eq 0 ]] && docker run --rm -v "$WORK":/w -w /w amazonlinux:2023 \
+                   bash -c "rpm --import aws-xray.gpg && rpm -K '$name' | grep -q 'signatures OK'"; then
                 sig=0
               else
                 sig=1
