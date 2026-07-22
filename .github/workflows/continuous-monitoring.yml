@@ -99,14 +99,14 @@ jobs:
       # into a matrix over every replicated region.
       BUCKET_REGION: us-east-2
     steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a #v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_INTEG_TEST_ROLE_ARN }}
           aws-region: us-east-1
-
-      - name: Check out repo
-        uses: actions/checkout@v4
 
       - name: Download and verify S3 assets
         if: ${{ always() }}
