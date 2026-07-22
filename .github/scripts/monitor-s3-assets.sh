@@ -69,21 +69,27 @@ DEB_ARTIFACTS=(
 WORK="$(mktemp -d)"
 cd "$WORK" || exit 1
 
-# Failures are recorded as one "metric artifact region" line per failure in a
-# flat log, rather than associative arrays -- macOS still ships bash 3.2, which
-# has no `declare -A`, and keeping this portable preserves local testability.
-# Counts and failing-region lists are derived from the log at the end.
-FAILLOG="$WORK/failures.log"
-: > "$FAILLOG"
+# Failures are recorded as "metric artifact region" lines, rather than
+# associative arrays -- macOS still ships bash 3.2, which has no `declare -A`,
+# and keeping this portable preserves local testability. Each region worker
+# writes its OWN fail file ($WORK/fail.<region>) so parallel workers never
+# append to a shared file concurrently; they are concatenated at the end.
+# Counts and failing-region lists are then derived from the combined log.
+MAX_PARALLEL="${MAX_PARALLEL:-8}"
 
-record_dl_fail()  { echo "DownloadFailureFromS3 $1 $2" >> "$FAILLOG"; }
-record_sig_fail() { echo "SignatureVerificationFailureFromS3 $1 $2" >> "$FAILLOG"; }
+record_dl_fail()  { echo "DownloadFailureFromS3 $1 $2" >> "$3"; }
+record_sig_fail() { echo "SignatureVerificationFailureFromS3 $1 $2" >> "$3"; }
 
 base_for() { echo "https://s3.$1.amazonaws.com/aws-xray-assets.$1/xray-daemon"; }
 
 # curl -f exits non-zero on any HTTP error; this tests the real public customer
 # download path (objects are public, no S3 read perms needed).
 download() { curl -fsSL --retry 2 -o "$2" "$1"; }
+
+# Availability-only check via HEAD -- confirms the object exists without pulling
+# its bytes. Used for artifacts we don't verify locally (debs), which avoids
+# downloading hundreds of MB of package data across all regions every run.
+head_ok() { curl -fsSL --retry 2 -o /dev/null -I "$1"; }
 
 # Publish one metric point. In DRY_RUN mode, print instead of calling AWS so the
 # script is runnable locally without credentials.
@@ -105,70 +111,96 @@ else
   KEY_OK=1
 fi
 
-echo "Checking ${#REGIONS[@]} region(s); verification key import: $([[ $KEY_OK -eq 0 ]] && echo ok || echo FAILED)"
+echo "Checking ${#REGIONS[@]} region(s) (up to $MAX_PARALLEL in parallel); verification key import: $([[ $KEY_OK -eq 0 ]] && echo ok || echo FAILED)"
 
-for region in "${REGIONS[@]}"; do
+# Per-region worker: download every artifact + zip sigs, verify zip signatures
+# with gpg (host), and record download/signature failures to this region's own
+# fail file. RPM signature verification is NOT done here -- the downloaded rpms
+# are left on disk and verified together in a single container afterward, so we
+# spin up one Amazon Linux container total rather than one per region.
+check_region() { # $1=region
+  local region="$1"
+  local BASE rdir ff name
   BASE="$(base_for "$region")"
   rdir="$WORK/$region"; mkdir -p "$rdir"
+  ff="$WORK/fail.$region"; : > "$ff"
 
-  # --- signing key availability (per region) ---
-  download "$BASE/$KEY" "$rdir/$KEY" || record_dl_fail "$KEY" "$region"
+  download "$BASE/$KEY" "$rdir/$KEY" || record_dl_fail "$KEY" "$region" "$ff"
 
-  # --- zips: download artifact + .sig, then gpg --verify ---
   for name in "${ZIP_ARTIFACTS[@]}"; do
     if download "$BASE/$name" "$rdir/$name" && download "$BASE/$name.sig" "$rdir/$name.sig"; then
       if [[ "$KEY_OK" -ne 0 ]] || ! gpg --verify "$rdir/$name.sig" "$rdir/$name" >/dev/null 2>&1; then
-        record_sig_fail "$name" "$region"
+        record_sig_fail "$name" "$region" "$ff"
       fi
     else
-      record_dl_fail "$name" "$region"
-      record_sig_fail "$name" "$region"   # can't verify what didn't download
+      record_dl_fail "$name" "$region" "$ff"
+      record_sig_fail "$name" "$region" "$ff"   # can't verify what didn't download
     fi
   done
 
-  # --- rpms: download, then verify all present ones in one Amazon Linux
-  # container (see note below). One container per region keeps mapping simple. ---
-  # rpm verification runs inside amazonlinux:2023, not on the ubuntu-latest
-  # host: modern Ubuntu's rpm uses the Sequoia backend, which rejects the
-  # daemon's (older RSA) signing key and would falsely report SIGNATURES NOT OK.
-  rpm_present=()
+  # rpms: download only here; a download failure also fails the signature (can't
+  # verify what isn't present). Present rpms are verified in the container pass.
   for name in "${RPM_ARTIFACTS[@]}"; do
-    if download "$BASE/$name" "$rdir/$name"; then
-      rpm_present+=("$name")
-    else
-      record_dl_fail "$name" "$region"
-      record_sig_fail "$name" "$region"
-    fi
+    download "$BASE/$name" "$rdir/$name" || { record_dl_fail "$name" "$region" "$ff"; record_sig_fail "$name" "$region" "$ff"; }
   done
-  if [[ ${#rpm_present[@]} -gt 0 ]]; then
-    if [[ "$KEY_OK" -ne 0 ]]; then
-      for name in "${rpm_present[@]}"; do record_sig_fail "$name" "$region"; done
-    else
-      cp verify-key.gpg "$rdir/verify-key.gpg"
-      verify_out="$(docker run --rm -v "$rdir":/w -w /w amazonlinux:2023 \
-        bash -c 'rpm --import verify-key.gpg >/dev/null 2>&1 || exit 3
-for f in "$@"; do
-  if rpm -K "$f" | grep -q "signatures OK"; then echo "OK $f"; else echo "BAD $f"; fi
-done' _ "${rpm_present[@]}" 2>/dev/null)"
-      if [[ $? -eq 3 ]]; then
-        for name in "${rpm_present[@]}"; do record_sig_fail "$name" "$region"; done
-      else
-        for name in "${rpm_present[@]}"; do
-          grep -q "OK $name" <<< "$verify_out" || record_sig_fail "$name" "$region"
-        done
-      fi
-    fi
-  fi
 
-  # --- debs: download availability only ---
+  # debs: download availability only.
   # TODO: DEB signature verification uses the _gpgorigin member written by
   # Tool/src/packaging/sign-packages.sh. Verifying it robustly needs the exact
   # member concatenation order and is fragile enough to risk false alarms, so it
   # is deferred to its own change.
   for name in "${DEB_ARTIFACTS[@]}"; do
-    download "$BASE/$name" "$rdir/$name" || record_dl_fail "$name" "$region"
+    head_ok "$BASE/$name" || record_dl_fail "$name" "$region" "$ff"
   done
+}
+
+# Fan out region workers, capped at MAX_PARALLEL concurrent jobs.
+for region in "${REGIONS[@]}"; do
+  check_region "$region" &
+  while [[ "$(jobs -r | wc -l)" -ge "$MAX_PARALLEL" ]]; do wait -n 2>/dev/null || wait; done
 done
+wait
+
+# ---- RPM signature verification: one Amazon Linux container for all regions ---
+# rpm verification runs inside amazonlinux:2023, not on the ubuntu-latest host:
+# modern Ubuntu's rpm uses the Sequoia backend, which rejects the daemon's
+# (older RSA) signing key and would falsely report SIGNATURES NOT OK. Each
+# region's rpms live in $WORK/<region>/; mount $WORK and verify them all at once.
+if [[ "$KEY_OK" -ne 0 ]]; then
+  # No usable key: every downloaded rpm's signature is a failure.
+  for region in "${REGIONS[@]}"; do
+    for name in "${RPM_ARTIFACTS[@]}"; do
+      [[ -f "$WORK/$region/$name" ]] && record_sig_fail "$name" "$region" "$WORK/fail.$region"
+    done
+  done
+else
+  cp verify-key.gpg "$WORK/verify-key.gpg"
+  # Container prints "BAD <region>/<name>" for each rpm that fails verification.
+  bad_rpms="$(docker run --rm -v "$WORK":/w -w /w amazonlinux:2023 bash -c '
+    rpm --import verify-key.gpg >/dev/null 2>&1 || { echo IMPORT_FAILED; exit 0; }
+    for f in */*.rpm; do
+      [ -e "$f" ] || continue
+      rpm -K "$f" | grep -q "signatures OK" || echo "BAD $f"
+    done' 2>/dev/null)"
+  if grep -q IMPORT_FAILED <<< "$bad_rpms"; then
+    for region in "${REGIONS[@]}"; do
+      for name in "${RPM_ARTIFACTS[@]}"; do
+        [[ -f "$WORK/$region/$name" ]] && record_sig_fail "$name" "$region" "$WORK/fail.$region"
+      done
+    done
+  else
+    # Each BAD line is "BAD <region>/<name>"; split back into region + artifact.
+    while read -r _ path; do
+      [[ -z "${path:-}" ]] && continue
+      region="${path%%/*}"; name="${path##*/}"
+      record_sig_fail "$name" "$region" "$WORK/fail.$region"
+    done <<< "$(grep '^BAD ' <<< "$bad_rpms")"
+  fi
+fi
+
+# Combine all per-region fail files into one log for aggregation.
+FAILLOG="$WORK/failures.log"
+cat "$WORK"/fail.* > "$FAILLOG" 2>/dev/null || : > "$FAILLOG"
 
 # Emit one roll-up metric per artifact; the value is the number of regions in
 # which it failed, and the log names those regions when non-zero.
