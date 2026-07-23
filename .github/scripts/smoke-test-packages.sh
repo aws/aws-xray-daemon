@@ -37,14 +37,17 @@ case "$PACKAGE" in
   *) echo "unknown PACKAGE: $PACKAGE" >&2; exit 2 ;;
 esac
 
+# Publish the metric. Returns the aws exit status so callers can fail the run
+# if the metric could not be published -- otherwise a failed publish would
+# leave the workflow green with no data, hiding the very failure it reports.
 emit() { # $1=value(0|1)
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[dry-run] PackageInstallFailureFromS3{artifact=$FILE} = $1"
-  else
-    aws cloudwatch put-metric-data --metric-name PackageInstallFailureFromS3 \
-      --dimensions failure=rate,artifact="$FILE" --namespace MonitorDaemon \
-      --value "$1" --timestamp "$(date +%s)"
+    return 0
   fi
+  aws cloudwatch put-metric-data --metric-name PackageInstallFailureFromS3 \
+    --dimensions failure=rate,artifact="$FILE" --namespace MonitorDaemon \
+    --value "$1" --timestamp "$(date +%s)"
 }
 
 WORK="$(mktemp -d)"
@@ -53,7 +56,7 @@ WORK="$(mktemp -d)"
 # --retry can add up to one more.
 if ! curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 -o "$WORK/$FILE" "$BASE/$FILE"; then
   echo "FAIL: could not download $FILE"
-  emit 1
+  emit 1 || exit 1   # if the metric itself could not be published, fail loud
   exit 0
 fi
 
@@ -98,11 +101,11 @@ docker_rc=$?
 echo "$out"
 if [[ "$docker_rc" -ne 0 && "$docker_rc" -ne 124 ]] || ! grep -q "INSTALL_REGISTERED" <<< "$out"; then
   echo "RESULT: $PACKAGE FAILED (install did not succeed / package not registered / verifier could not run; docker rc=$docker_rc)"
-  emit 1
+  emit 1 || exit 1
 elif grep -q "Initializing AWS X-Ray daemon" <<< "$out"; then
   echo "RESULT: $PACKAGE installed, registered, and started OK"
-  emit 0
+  emit 0 || exit 1
 else
   echo "RESULT: $PACKAGE FAILED (installed but daemon did not print startup banner)"
-  emit 1
+  emit 1 || exit 1
 fi

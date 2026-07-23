@@ -96,11 +96,19 @@ head_ok() { curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 -o /dev/null
 
 # Publish one metric point. In DRY_RUN mode, print instead of calling AWS so the
 # script is runnable locally without credentials.
+# Tracks whether any metric failed to publish. A failed publish must not leave
+# the job green with missing data, but we also don't want to abort mid-run and
+# skip the remaining metrics -- so failures are recorded and the script exits
+# non-zero at the end (see the final PUBLISH_FAILED check).
+PUBLISH_FAILED=0
 emit() { # $1=metric-name  $2=value(count)  $3=artifact
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[dry-run] $1{artifact=$3} = $2"
-  else
-    aws cloudwatch put-metric-data --metric-name "$1" --dimensions failure=rate,artifact="$3" --namespace MonitorDaemon --value "$2" --timestamp "$(date +%s)"
+    return 0
+  fi
+  if ! aws cloudwatch put-metric-data --metric-name "$1" --dimensions failure=rate,artifact="$3" --namespace MonitorDaemon --value "$2" --timestamp "$(date +%s)"; then
+    echo "ERROR: failed to publish $1{artifact=$3}=$2" >&2
+    PUBLISH_FAILED=1
   fi
 }
 
@@ -236,3 +244,10 @@ done
 for name in "${ZIP_ARTIFACTS[@]}" "${RPM_ARTIFACTS[@]}"; do
   emit_rollup SignatureVerificationFailureFromS3 "$name"
 done
+
+# Fail the run if any metric could not be published -- otherwise a CloudWatch
+# outage or credential problem would leave the job green with missing data.
+if [[ "$PUBLISH_FAILED" -ne 0 ]]; then
+  echo "ERROR: one or more metrics failed to publish" >&2
+  exit 1
+fi

@@ -27,11 +27,18 @@ set -uo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
 
+# Tracks whether any metric failed to publish, so a failed publish fails the
+# run rather than leaving the job green with missing data. Recorded here and
+# checked at the end (and at the early version-detection exit).
+PUBLISH_FAILED=0
 emit() { # $1=metric-name  $2=value(0|1)  $3=channel
   if [[ "$DRY_RUN" == "1" ]]; then
     echo "[dry-run] $1{channel=$3} = $2"
-  else
-    aws cloudwatch put-metric-data --metric-name "$1" --dimensions failure=rate,channel="$3" --namespace MonitorDaemon --value "$2" --timestamp "$(date +%s)"
+    return 0
+  fi
+  if ! aws cloudwatch put-metric-data --metric-name "$1" --dimensions failure=rate,channel="$3" --namespace MonitorDaemon --value "$2" --timestamp "$(date +%s)"; then
+    echo "ERROR: failed to publish $1{channel=$3}=$2" >&2
+    PUBLISH_FAILED=1
   fi
 }
 
@@ -48,7 +55,7 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   emit TagAliasMismatchFromECR 1 "3.x-and-latest"
   emit TagAliasMismatchFromDockerhub 1 "3.x-and-latest"
   emit TagAliasMismatchFromS3 1 "3.x"
-  exit 0
+  exit "$PUBLISH_FAILED"
 fi
 echo "Expected version: $VERSION"
 
@@ -113,4 +120,10 @@ elif [[ "$alias_etag" == "$ver_etag" ]]; then
 else
   echo "  [s3] MISMATCH: 3.x=$alias_etag != $VERSION=$ver_etag"
   emit TagAliasMismatchFromS3 1 "3.x"
+fi
+
+# Fail the run if any metric could not be published.
+if [[ "$PUBLISH_FAILED" -ne 0 ]]; then
+  echo "ERROR: one or more metrics failed to publish" >&2
+  exit 1
 fi
