@@ -48,7 +48,10 @@ emit() { # $1=value(0|1)
 }
 
 WORK="$(mktemp -d)"
-if ! curl -fsSL --retry 2 -o "$WORK/$FILE" "$BASE/$FILE"; then
+# Bounded timeouts so a stalled S3 connection can't hold the hourly run open
+# (the job also carries a timeout-minutes guard). --max-time is per attempt;
+# --retry can add up to one more.
+if ! curl -fsSL --connect-timeout 10 --max-time 120 --retry 2 -o "$WORK/$FILE" "$BASE/$FILE"; then
   echo "FAIL: could not download $FILE"
   emit 1
   exit 0

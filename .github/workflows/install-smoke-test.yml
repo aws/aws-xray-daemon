@@ -20,6 +20,10 @@ jobs:
   smoke-test:
     name: Smoke test ${{ matrix.package }}
     runs-on: ubuntu-latest
+    # Guards against a stalled download / image pull / package op overlapping
+    # the hourly schedule. Generous vs. the 10-min jobs because the arm64 legs
+    # run under QEMU emulation, but well under Actions' default job limit.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
