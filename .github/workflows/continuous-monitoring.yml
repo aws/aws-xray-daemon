@@ -94,6 +94,8 @@ jobs:
     # Availability + integrity check for the daemon's S3-hosted installers and
     # executables across all replicated regions. Zip and RPM artifacts are
     # signature-verified; DEB artifacts are checked for availability only.
+    # timeout-minutes guards against a hung run overlapping the next schedule.
+    timeout-minutes: 8
     steps:
       - name: Check out repo
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -115,6 +117,7 @@ jobs:
     # across ECR, Docker Hub, and S3, so a stale alias can't silently serve an
     # old version. Lightweight (HEAD/manifest requests only), so it fits the
     # 10-minute cadence alongside the other jobs.
+    timeout-minutes: 5
     steps:
       - name: Check out repo
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

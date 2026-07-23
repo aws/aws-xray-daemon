@@ -83,13 +83,16 @@ record_sig_fail() { echo "SignatureVerificationFailureFromS3 $1 $2" >> "$3"; }
 base_for() { echo "https://s3.$1.amazonaws.com/aws-xray-assets.$1/xray-daemon"; }
 
 # curl -f exits non-zero on any HTTP error; this tests the real public customer
-# download path (objects are public, no S3 read perms needed).
-download() { curl -fsSL --retry 2 -o "$2" "$1"; }
+# download path (objects are public, no S3 read perms needed). Bounded timeouts
+# keep a stalled S3 connection from holding a worker indefinitely -- with a
+# 10-minute schedule that would let runs overlap without ever reporting a
+# failure. --max-time is per attempt; --retry can add up to one more attempt.
+download() { curl -fsSL --connect-timeout 10 --max-time 60 --retry 2 -o "$2" "$1"; }
 
 # Availability-only check via HEAD -- confirms the object exists without pulling
 # its bytes. Used for artifacts we don't verify locally (debs), which avoids
 # downloading hundreds of MB of package data across all regions every run.
-head_ok() { curl -fsSL --retry 2 -o /dev/null -I "$1"; }
+head_ok() { curl -fsSL --connect-timeout 10 --max-time 30 --retry 2 -o /dev/null -I "$1"; }
 
 # Publish one metric point. In DRY_RUN mode, print instead of calling AWS so the
 # script is runnable locally without credentials.
@@ -166,28 +169,39 @@ wait
 # modern Ubuntu's rpm uses the Sequoia backend, which rejects the daemon's
 # (older RSA) signing key and would falsely report SIGNATURES NOT OK. Each
 # region's rpms live in $WORK/<region>/; mount $WORK and verify them all at once.
-if [[ "$KEY_OK" -ne 0 ]]; then
-  # No usable key: every downloaded rpm's signature is a failure.
+# Mark every downloaded rpm as a signature failure. Used whenever the verifier
+# cannot produce a trustworthy per-rpm verdict, so the check fails closed.
+fail_all_rpm_sigs() {
+  local region name
   for region in "${REGIONS[@]}"; do
     for name in "${RPM_ARTIFACTS[@]}"; do
       [[ -f "$WORK/$region/$name" ]] && record_sig_fail "$name" "$region" "$WORK/fail.$region"
     done
   done
+}
+
+if [[ "$KEY_OK" -ne 0 ]]; then
+  # No usable key: every downloaded rpm's signature is a failure.
+  fail_all_rpm_sigs
 else
   cp verify-key.gpg "$WORK/verify-key.gpg"
-  # Container prints "BAD <region>/<name>" for each rpm that fails verification.
+  # The container prints "BAD <region>/<name>" for each rpm that fails
+  # verification and "VERIFY_DONE" once it has checked every rpm. The sentinel
+  # plus the docker exit code let us tell "verified, all good" apart from
+  # "verifier never ran" (Docker daemon down, image-pull failure, etc.) -- the
+  # latter must fail closed rather than emit healthy metrics.
   bad_rpms="$(docker run --rm -v "$WORK":/w -w /w amazonlinux:2023 bash -c '
     rpm --import verify-key.gpg >/dev/null 2>&1 || { echo IMPORT_FAILED; exit 0; }
     for f in */*.rpm; do
       [ -e "$f" ] || continue
       rpm -K "$f" | grep -q "signatures OK" || echo "BAD $f"
-    done' 2>/dev/null)"
-  if grep -q IMPORT_FAILED <<< "$bad_rpms"; then
-    for region in "${REGIONS[@]}"; do
-      for name in "${RPM_ARTIFACTS[@]}"; do
-        [[ -f "$WORK/$region/$name" ]] && record_sig_fail "$name" "$region" "$WORK/fail.$region"
-      done
     done
+    echo VERIFY_DONE' 2>/dev/null)"
+  docker_rc=$?
+  if [[ "$docker_rc" -ne 0 ]] || ! grep -q VERIFY_DONE <<< "$bad_rpms" || grep -q IMPORT_FAILED <<< "$bad_rpms"; then
+    # Verifier could not run or could not import the key: fail closed.
+    echo "WARN: rpm verifier did not complete (docker rc=$docker_rc); marking all rpm signatures failed"
+    fail_all_rpm_sigs
   else
     # Each BAD line is "BAD <region>/<name>"; split back into region + artifact.
     while read -r _ path; do
