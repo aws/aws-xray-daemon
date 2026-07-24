@@ -33,13 +33,9 @@ set -uo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
 
-# Regions where aws-xray-assets is replicated and reachable over the standard
-# s3.<region>.amazonaws.com endpoint (this includes GovCloud). Two exclusions:
-#   - cn-north-1 / cn-northwest-1: served only from the China partition
-#     (s3.<region>.amazonaws.com.cn), which this script's single endpoint scheme
-#     doesn't handle; monitoring them needs that endpoint added.
-#   - me-south-1: known-unreachable region, excluded to avoid a permanent false
-#     failure.
+# Regions where aws-xray-assets is replicated. Covers the commercial partition,
+# GovCloud, and China (cn-* regions use the .amazonaws.com.cn endpoint -- see
+# base_for). me-south-1 is excluded as a known-unreachable region.
 REGIONS=(
   us-east-1 us-east-2 us-west-1 us-west-2 ca-central-1 ca-west-1
   eu-west-1 eu-west-2 eu-west-3 eu-central-1 eu-central-2
@@ -49,6 +45,7 @@ REGIONS=(
   ap-east-1 ap-east-2 sa-east-1 af-south-1
   me-central-1 il-central-1 mx-central-1 us-northeast-1
   us-gov-east-1 us-gov-west-1
+  cn-north-1 cn-northwest-1
 )
 if [[ -n "${MONITOR_REGIONS:-}" ]]; then
   read -r -a REGIONS <<< "$MONITOR_REGIONS"
@@ -85,7 +82,14 @@ MAX_PARALLEL="${MAX_PARALLEL:-8}"
 record_dl_fail()  { echo "DownloadFailureFromS3 $1 $2" >> "$3"; }
 record_sig_fail() { echo "SignatureVerificationFailureFromS3 $1 $2" >> "$3"; }
 
-base_for() { echo "https://s3.$1.amazonaws.com/aws-xray-assets.$1/xray-daemon"; }
+# S3 base URL for a region. China-partition regions (cn-*) are served from the
+# .amazonaws.com.cn endpoint rather than .amazonaws.com.
+base_for() {
+  case "$1" in
+    cn-*) echo "https://s3.$1.amazonaws.com.cn/aws-xray-assets.$1/xray-daemon" ;;
+    *)    echo "https://s3.$1.amazonaws.com/aws-xray-assets.$1/xray-daemon" ;;
+  esac
+}
 
 # curl -f exits non-zero on any HTTP error; this tests the real public customer
 # download path (objects are public, no S3 read perms needed). Bounded timeouts
