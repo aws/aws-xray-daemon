@@ -33,17 +33,22 @@ set -uo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
 
-# Regions where aws-xray-assets is replicated, discovered by probing the public
-# bucket. me-south-1 is deliberately excluded: it is an opt-in region whose S3
-# endpoint does not connect from a standard runner, so including it would
-# produce a permanent false failure. It needs separate handling before it can
-# be monitored here.
+# Regions where aws-xray-assets is replicated and reachable over the standard
+# s3.<region>.amazonaws.com endpoint (this includes GovCloud). Two exclusions:
+#   - cn-north-1 / cn-northwest-1: served only from the China partition
+#     (s3.<region>.amazonaws.com.cn), which this script's single endpoint scheme
+#     doesn't handle; monitoring them needs that endpoint added.
+#   - me-south-1: known-unreachable region, excluded to avoid a permanent false
+#     failure.
 REGIONS=(
-  us-east-1 us-east-2 us-west-1 us-west-2 ca-central-1
-  eu-west-1 eu-west-2 eu-west-3 eu-central-1 eu-north-1 eu-south-1
-  ap-south-1 ap-southeast-1 ap-southeast-2 ap-southeast-3
-  ap-northeast-1 ap-northeast-2 ap-northeast-3 ap-east-1
-  sa-east-1 af-south-1
+  us-east-1 us-east-2 us-west-1 us-west-2 ca-central-1 ca-west-1
+  eu-west-1 eu-west-2 eu-west-3 eu-central-1 eu-central-2
+  eu-north-1 eu-south-1 eu-south-2
+  ap-south-1 ap-south-2 ap-southeast-1 ap-southeast-2 ap-southeast-3
+  ap-southeast-4 ap-southeast-5 ap-northeast-1 ap-northeast-2 ap-northeast-3
+  ap-east-1 ap-east-2 sa-east-1 af-south-1
+  me-central-1 il-central-1 mx-central-1 us-northeast-1
+  us-gov-east-1 us-gov-west-1
 )
 if [[ -n "${MONITOR_REGIONS:-}" ]]; then
   read -r -a REGIONS <<< "$MONITOR_REGIONS"
