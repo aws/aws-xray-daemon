@@ -1,4 +1,4 @@
-name: Continuous Monitoring of Dockerhub and public ECR
+name: Continuous Monitoring of Dockerhub, public ECR, and S3
 on:
   workflow_dispatch:
   schedule:
@@ -87,3 +87,47 @@ jobs:
           else
             aws cloudwatch put-metric-data --metric-name DaemonImageStartupFailureFromDockerhub --dimensions failure=rate --namespace MonitorDaemon --value 0 --timestamp $(date +%s)
           fi
+
+  monitor-s3:
+    name: Monitor S3 assets
+    runs-on: ubuntu-latest
+    # Availability + integrity check for the daemon's S3-hosted installers and
+    # executables across all replicated regions. Zip and RPM artifacts are
+    # signature-verified; DEB artifacts are checked for availability only.
+    # timeout-minutes guards against a hung run overlapping the next schedule.
+    timeout-minutes: 8
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a #v4.3.1
+        with:
+          role-to-assume: ${{ secrets.AWS_INTEG_TEST_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Download and verify S3 assets
+        if: ${{ always() }}
+        run: .github/scripts/monitor-s3-assets.sh
+
+  tag-alias-check:
+    name: Check tag aliases
+    runs-on: ubuntu-latest
+    # Verifies the moving aliases (latest, 3.x) resolve to the current release
+    # across ECR, Docker Hub, and S3, so a stale alias can't silently serve an
+    # old version. Lightweight (HEAD/manifest requests only), so it fits the
+    # 10-minute cadence alongside the other jobs.
+    timeout-minutes: 5
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a #v4.3.1
+        with:
+          role-to-assume: ${{ secrets.AWS_INTEG_TEST_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Check tag aliases
+        if: ${{ always() }}
+        run: .github/scripts/check-tag-aliases.sh
