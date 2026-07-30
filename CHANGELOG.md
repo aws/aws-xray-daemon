@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 3.6.7 (2026-07-30)
+- Bump golang.org/x/text from 0.37.0 to 0.39.0 [PR #296](https://github.com/aws/aws-xray-daemon/pull/296)
+
 ## 3.6.6 (2026-07-14)
 - Bump Go from 1.25.11 to 1.25.12 [PR #292](https://github.com/aws/aws-xray-daemon/pull/292)
 - Bump golang.org/x/net from 0.38.0 to 0.55.0 [PR #291](https://github.com/aws/aws-xray-daemon/pull/291)
