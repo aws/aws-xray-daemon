@@ -229,6 +229,10 @@ jobs:
       # https://dev.to/mrmike/github-action-handling-input-default-value-5f2g
       - name: Set AWS region and partition values
         id: setRegion
+        env:
+          # Bind the user-controlled workflow input to an env var so it is never
+          # interpolated directly into the shell command (prevents script injection).
+          INPUT_REGION: ${{ github.event.inputs.region }}
         run: |
           if [[ ${{ matrix.testcases }} == "linux_zip_cn" ]]; then
             echo "::set-output name=region::cn-north-1"
@@ -237,11 +241,11 @@ jobs:
             echo "::set-output name=region::us-gov-west-1"
             echo "::set-output name=partition::aws-us-gov"
           else
-            USER_INPUT=${{ github.event.inputs.region }}
+            USER_INPUT="$INPUT_REGION"
             # Use user input region or fall back to "us-west-2"
             REGION=${USER_INPUT:-"us-west-2"}
             echo "::set-output name=region::$REGION"
-            echo "::set-output name=partition::aws"  
+            echo "::set-output name=partition::aws"
           fi
 
       - name: Configure AWS Credentials
