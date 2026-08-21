@@ -73,6 +73,29 @@ Usage: xray [options]
 | -v | --version | Show AWS X-Ray daemon version. |
 | -h | --help | Show this screen |
 
+## TCP signing proxy
+
+Alongside the UDP listener that receives segment documents, the daemon runs an HTTP
+signing proxy on its TCP address (`-t`, `--bind-tcp`, `Socket.TCPAddress`). The proxy
+exists so that a co-located SDK can reach the [X-Ray sampling API](https://docs.aws.amazon.com/xray/latest/devguide/xray-api-sampling.html)
+without holding AWS credentials of its own: the daemon signs the request with its own
+credentials and forwards it to X-Ray.
+
+The proxy has no way to authenticate its callers, so it forwards only the two sampling
+operations, `GetSamplingRules` and `GetSamplingTargets`. Any other request is answered
+with `403 Forbidden` and is neither signed nor forwarded, so the daemon's IAM role
+cannot be used to write trace segments, read traces, or call the X-Ray control plane
+through the proxy.
+
+Because a caller still cannot be distinguished from any other, restrict who may reach
+the TCP address. The default of `127.0.0.1:2000` limits it to the local host. Container
+deployments that place the daemon in its own network namespace, such as an ECS `bridge`
+sidecar or a Kubernetes DaemonSet, need a wider bind, and the daemon logs a warning when
+it starts on one. In that case narrow access with a control outside the daemon, such as a
+security group or a Kubernetes NetworkPolicy, and grant the daemon's role no more than
+the [`AWSXRayDaemonWriteAccess`](https://docs.aws.amazon.com/xray/latest/devguide/security_iam_id-based-policy-examples.html)
+permissions it needs.
+
 ## Build  
 
 `make build` would build binaries and .zip files in `/build` folder for Linux, MacOS, and Windows platforms.    
