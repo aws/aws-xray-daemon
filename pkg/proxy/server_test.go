@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
 	"strings"
@@ -47,10 +48,9 @@ func TestConsumeNilBody(t *testing.T) {
 	assert.Nil(t, rs)
 }
 
-// Assert that Director modifies the passed in http.Request
-func TestDirector(t *testing.T) {
-	// Create dummy aws Config for v2
-	awsCfg := aws.Config{
+// dummyAWSConfig returns an aws.Config with static credentials for tests.
+func dummyAWSConfig() aws.Config {
+	return aws.Config{
 		Region: "us-east-1",
 		Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
 			return aws.Credentials{
@@ -60,13 +60,16 @@ func TestDirector(t *testing.T) {
 			}, nil
 		}),
 	}
+}
 
+// Assert that Director modifies the passed in http.Request
+func TestDirector(t *testing.T) {
 	// Create proxy server
-	s, err := NewServer(cfg.DefaultConfig(), awsCfg)
+	s, err := NewServer(cfg.DefaultConfig(), dummyAWSConfig())
 	assert.Nil(t, err)
 
 	// Extract director from server
-	d := s.Handler.(*httputil.ReverseProxy).Director
+	d := s.Handler.(*operationFilter).proxy.(*httputil.ReverseProxy).Director
 
 	// Create http request to pass to director
 	url, err := url.Parse("http://127.0.0.1:2000")
@@ -96,6 +99,67 @@ func TestDirector(t *testing.T) {
 	assert.Contains(t, req.Header, "X-Amz-Security-Token")
 	assert.Contains(t, req.Header, "X-Amz-Date")
 	assert.NotContains(t, req.Header, "Connection")
+}
+
+// Assert that the sampling operations are forwarded to the signing proxy with a
+// canonical path.
+func TestOperationFilterForwardsSamplingOperations(t *testing.T) {
+	for _, tc := range []struct {
+		path     string
+		expected string
+	}{
+		{"/GetSamplingRules", "/GetSamplingRules"},
+		{"/SamplingTargets", "/SamplingTargets"},
+		{"//GetSamplingRules", "/GetSamplingRules"},
+		{"/foo/../SamplingTargets", "/SamplingTargets"},
+		{"/TraceSegments%2f..%2fGetSamplingRules", "/GetSamplingRules"},
+	} {
+		forwarded := false
+		var forwardedURL *url.URL
+		filter := &operationFilter{proxy: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			forwarded = true
+			forwardedURL = req.URL
+		})}
+
+		rec := httptest.NewRecorder()
+		filter.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader("{}")))
+
+		assert.True(t, forwarded, "expected %v to be forwarded", tc.path)
+		assert.Equal(t, tc.expected, forwardedURL.Path)
+		assert.Equal(t, tc.expected, forwardedURL.EscapedPath())
+	}
+}
+
+// Assert that operations other than the sampling operations are rejected without
+// being forwarded, so that the daemon's credentials are never lent to them.
+func TestOperationFilterRejectsOtherOperations(t *testing.T) {
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/TraceSegments"},           // PutTraceSegments
+		{http.MethodPost, "/Traces"},                  // BatchGetTraces
+		{http.MethodPost, "/TraceSummaries"},          // GetTraceSummaries
+		{http.MethodPost, "/Groups"},                  // GetGroups
+		{http.MethodPost, "/CreateGroup"},             // CreateGroup
+		{http.MethodPost, "/EncryptionConfig"},        // GetEncryptionConfig
+		{http.MethodPost, "/"},                        //
+		{http.MethodPost, "/GetSamplingRules/extra"},  // not the operation itself
+		{http.MethodPost, "/GetSamplingRules/../Tra"}, // resolves elsewhere
+		{http.MethodGet, "/GetSamplingRules"},         // sampling APIs are POST only
+		{http.MethodPut, "/SamplingTargets"},
+	} {
+		filter := &operationFilter{proxy: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			t.Errorf("%v %v was forwarded to the signing proxy", tc.method, tc.path)
+		})}
+
+		rec := httptest.NewRecorder()
+		filter.ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader("{}")))
+
+		assert.Equal(t, http.StatusForbidden, rec.Code, "%v %v", tc.method, tc.path)
+		assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+		assert.Equal(t, forbiddenBody, rec.Body.String())
+	}
 }
 
 // Fetching endpoint from aws config instance

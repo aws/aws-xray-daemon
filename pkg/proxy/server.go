@@ -15,6 +15,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -28,20 +29,92 @@ import (
 const service = "xray"
 const connHeader = "Connection"
 
+// forbiddenBody is the response body returned for a request the proxy refuses to
+// sign and forward.
+const forbiddenBody = `{"message":"The X-Ray daemon proxy only forwards the GetSamplingRules and GetSamplingTargets operations."}`
+
+// allowedOperations are the request paths of the X-Ray sampling APIs, the only
+// operations the signing proxy forwards.
+//
+// The TCP listener signs every request it forwards with the daemon's own
+// credentials and has no way to identify or authenticate its callers, so any
+// operation it accepts is an operation that any caller able to reach the
+// listener may perform with the daemon's IAM role. The listener exists so that a
+// co-located SDK can reach the sampling APIs without holding credentials of its
+// own, so it is limited to exactly those two operations. Everything else, in
+// particular the trace read and control plane APIs, is rejected without being
+// signed or forwarded.
+var allowedOperations = map[string]struct{}{
+	"/GetSamplingRules": {}, // GetSamplingRules
+	"/SamplingTargets":  {}, // GetSamplingTargets
+}
+
 // Server represents HTTP server.
 type Server struct {
 	*http.Server
+}
+
+// operationFilter rejects requests for operations outside allowedOperations
+// before they reach the signing proxy.
+type operationFilter struct {
+	proxy http.Handler
+}
+
+func (f *operationFilter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	operation, allowed := allowedOperation(req)
+	if !allowed {
+		log.Warnf("Rejecting request on HTTP Proxy server: %v %v is not an X-Ray sampling operation",
+			req.Method, requestPath(req))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		if _, err := w.Write([]byte(forbiddenBody)); err != nil {
+			log.Debugf("Unable to write response on HTTP Proxy server: %v", err)
+		}
+		return
+	}
+
+	// Forward the canonical path so that an escaped or traversing path cannot
+	// resolve to a different operation once the request has been signed.
+	req.URL.Path = operation
+	req.URL.RawPath = ""
+
+	f.proxy.ServeHTTP(w, req)
+}
+
+// allowedOperation returns the canonical path of the sampling operation the
+// request targets, and whether the request may be forwarded at all.
+func allowedOperation(req *http.Request) (string, bool) {
+	if req.Method != http.MethodPost || req.URL == nil {
+		return "", false
+	}
+	operation := path.Clean(req.URL.Path)
+	if _, ok := allowedOperations[operation]; !ok {
+		return "", false
+	}
+	return operation, true
+}
+
+// requestPath returns the path of a request for logging, without assuming the
+// request carries a URL.
+func requestPath(req *http.Request) string {
+	if req.URL == nil {
+		return ""
+	}
+	return req.URL.Path
 }
 
 // NewServer returns a proxy server listening on the given address.
 // Requests are forwarded to the endpoint in the given config.
 // Requests are signed using credentials from the given config.
 func NewServer(cfg *cfg.Config, awsCfg aws.Config) (*Server, error) {
-	_, err := net.ResolveTCPAddr("tcp", cfg.Socket.TCPAddress)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", cfg.Socket.TCPAddress)
 	if err != nil {
 		log.Errorf("%v", err)
 		os.Exit(1)
 	}
+	warnOnRemotelyReachableBind(tcpAddr)
+
 	endPoint, er := getServiceEndpoint(&awsCfg)
 
 	if er != nil {
@@ -126,12 +199,27 @@ func NewServer(cfg *cfg.Config, awsCfg aws.Config) (*Server, error) {
 
 	server := &http.Server{
 		Addr:    cfg.Socket.TCPAddress,
-		Handler: handler,
+		Handler: &operationFilter{proxy: handler},
 	}
 
 	p := &Server{server}
 
 	return p, nil
+}
+
+// warnOnRemotelyReachableBind logs a warning when the proxy listens on anything
+// other than a loopback address. The listener signs requests with the daemon's
+// credentials and cannot authenticate its callers, so on such a bind every host
+// that can route to the address may read the account's sampling rules using the
+// daemon's IAM role.
+func warnOnRemotelyReachableBind(addr *net.TCPAddr) {
+	if addr.IP != nil && addr.IP.IsLoopback() {
+		return
+	}
+	log.Warnf("HTTP Proxy server is bound to %v, which is reachable beyond the loopback interface. "+
+		"The proxy signs requests with the daemon's credentials and cannot authenticate callers, so "+
+		"restrict access to this address to the workloads that need it, for example with a security "+
+		"group or a network policy.", addr.String())
 }
 
 // consume readsAll() the body and creates a new io.ReadSeeker from the content. v4.Signer
