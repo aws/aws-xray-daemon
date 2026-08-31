@@ -1,13 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 3.7.0 (2026-08-31)
 - Restrict the TCP signing proxy to the X-Ray sampling operations. `GetSamplingRules` and
   `GetSamplingTargets` are forwarded as before; every other request is answered with
   `403 Forbidden` and is neither signed with the daemon's credentials nor forwarded to
   X-Ray. The proxy cannot authenticate its callers, so any other operation it accepted
   let any caller able to reach the listener act with the daemon's IAM role.
 - Log a warning at startup when the TCP signing proxy binds to a non-loopback address.
+- Bump Go from 1.25.11 to 1.25.13 and golang.org/x/net from 0.55.0 to 0.56.0 [PR #300](https://github.com/aws/aws-xray-daemon/pull/300)
 
 ## 3.6.7 (2026-07-30)
 - Bump golang.org/x/text from 0.37.0 to 0.39.0 [PR #296](https://github.com/aws/aws-xray-daemon/pull/296)
