@@ -43,7 +43,7 @@ REGIONS=(
   ap-south-1 ap-south-2 ap-southeast-1 ap-southeast-2 ap-southeast-3
   ap-southeast-4 ap-southeast-5 ap-northeast-1 ap-northeast-2 ap-northeast-3
   ap-east-1 ap-east-2 sa-east-1 af-south-1
-  me-central-1 il-central-1 mx-central-1 us-northeast-1
+  me-central-1 il-central-1 mx-central-1
   us-gov-east-1 us-gov-west-1
   cn-north-1 cn-northwest-1
 )
