@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+- Bump Go from 1.25.13 to 1.26.9 and golang.org/x/net from 0.56.0 to 0.60.0 [PR #305](https://github.com/aws/aws-xray-daemon/pull/305)
+
 ## 3.7.0 (2026-08-31)
 - Restrict the TCP signing proxy to the X-Ray sampling operations. `GetSamplingRules` and
   `GetSamplingTargets` are forwarded as before; every other request is answered with

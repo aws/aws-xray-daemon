@@ -1,8 +1,8 @@
 module github.com/aws/aws-xray-daemon
 
-go 1.25.0
+go 1.26.0
 
-toolchain go1.25.13
+toolchain go1.26.9
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.38.0
@@ -15,8 +15,8 @@ require (
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
 	github.com/shirou/gopsutil v2.19.10+incompatible
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/net v0.56.0
-	golang.org/x/sys v0.46.0
+	golang.org/x/net v0.60.0
+	golang.org/x/sys v0.48.0
 	gopkg.in/yaml.v2 v2.2.8
 )
 
@@ -33,5 +33,5 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.1.0 // indirect
-	golang.org/x/text v0.39.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 )
