@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Trivy ignore file for daily scans.
-# This file is intentionally empty. Daily scans should flag all CVEs.
 # See: https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/
 
 # Format:
@@ -10,4 +9,22 @@
 #   statement: "<Why are we excluding?> <link to CVE where we can track status>"
 #   expired_at: <required - YYYY-MM-DD>
 
-vulnerabilities: []
+vulnerabilities:
+  # Fixed on master by #305 (Go 1.26.9, golang.org/x/net v0.60.0), but the published
+  # image is still v3.7.0. Scoped to the vulnerable versions only. Remove in the v3.7.1 release.
+  - id: CVE-2026-78669
+    purls:
+      - "pkg:golang/golang.org/x/net@v0.56.0"
+      - "pkg:golang/stdlib@v1.25.13"
+    statement: "Fixed in https://github.com/aws/aws-xray-daemon/pull/305, pending the v3.7.1 release."
+    expired_at: 2027-10-16
+  - id: CVE-2026-78667
+    purls:
+      - "pkg:golang/stdlib@v1.25.13"
+    statement: "Fixed in https://github.com/aws/aws-xray-daemon/pull/305, pending the v3.7.1 release."
+    expired_at: 2027-10-16
+  - id: CVE-2026-97031
+    purls:
+      - "pkg:golang/stdlib@v1.25.13"
+    statement: "Fixed in https://github.com/aws/aws-xray-daemon/pull/305, pending the v3.7.1 release."
+    expired_at: 2027-10-16
