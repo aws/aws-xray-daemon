@@ -1,8 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 3.7.1 (2026-10-21)
 - Bump Go from 1.25.13 to 1.26.9 and golang.org/x/net from 0.56.0 to 0.60.0 [PR #305](https://github.com/aws/aws-xray-daemon/pull/305)
+  - This also bumps golang.org/x/text from 0.39.0 to 0.42.0 and golang.org/x/sys from 0.46.0 to 0.48.0,
+    and addresses CVE-2026-78669, CVE-2026-78667, CVE-2026-97031 and CVE-2026-56851.
 
 ## 3.7.0 (2026-08-31)
 - Restrict the TCP signing proxy to the X-Ray sampling operations. `GetSamplingRules` and
