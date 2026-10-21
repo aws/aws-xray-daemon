@@ -28,3 +28,8 @@ vulnerabilities:
       - "pkg:golang/stdlib@v1.25.13"
     statement: "Fixed in https://github.com/aws/aws-xray-daemon/pull/305, pending the v3.7.1 release."
     expired_at: 2027-10-16
+  - id: CVE-2026-56851
+    purls:
+      - "pkg:golang/golang.org/x/text@v0.39.0"
+    statement: "golang.org/x/text is v0.42.0 on master since https://github.com/aws/aws-xray-daemon/pull/305, pending the v3.7.1 release."
+    expired_at: 2026-10-26
