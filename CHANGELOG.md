@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 3.7.2 (2026-11-02)
+## 3.7.2 (TBD)
 - Bump Go from 1.26.9 to 1.26.10 to address CVE-2026-111943 (`crypto/x509` now rejects chains through the compromised eMudhra intermediate CAs). The container image also picks up the updated Alpine `ca-certificates` bundle, which no longer trusts the affected emSign roots. [PR #309](https://github.com/aws/aws-xray-daemon/pull/309)
 
 ## 3.7.1 (2026-10-21)
