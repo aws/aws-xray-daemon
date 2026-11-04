@@ -33,3 +33,10 @@ vulnerabilities:
       - "pkg:golang/golang.org/x/text@v0.39.0"
     statement: "golang.org/x/text is v0.42.0 on master since https://github.com/aws/aws-xray-daemon/pull/305, pending the v3.7.1 release."
     expired_at: 2026-10-26
+  # Fixed on master by #309 (Go 1.26.10), but the published image is still v3.7.1.
+  # Scoped to the vulnerable version only. Remove once an image with the fix is released.
+  - id: CVE-2026-111943
+    purls:
+      - "pkg:golang/stdlib@v1.26.9"
+    statement: "Go stdlib crypto/x509 vulnerability in the published v3.7.1 image. Fixed on master by https://github.com/aws/aws-xray-daemon/pull/309."
+    expired_at: 2026-11-30
