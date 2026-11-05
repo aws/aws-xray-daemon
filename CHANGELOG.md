@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 3.7.2 (TBD)
+## 3.7.2 (2026-11-04)
 - Bump Go from 1.26.9 to 1.26.10 to address CVE-2026-111943 (`crypto/x509` now rejects chains through the compromised eMudhra intermediate CAs). The container image also picks up the updated Alpine `ca-certificates` bundle, which no longer trusts the affected emSign roots. [PR #309](https://github.com/aws/aws-xray-daemon/pull/309)
 - Bump golang.org/x/net from 0.60.0 to 0.62.0 to address CVE-2026-78661 and CVE-2026-97045 [PR #312](https://github.com/aws/aws-xray-daemon/pull/312)
   - This also bumps golang.org/x/sys from 0.48.0 to 0.49.0 and golang.org/x/text from 0.42.0 to 0.43.0.
